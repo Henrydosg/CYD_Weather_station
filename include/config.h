@@ -14,16 +14,10 @@ constexpr uint8_t kScreenRotation = 1;  // landscape, 320 x 240
 // Some CYD panel variants (e.g. "TPM408-2.8") show a colour negative unless
 // display inversion is enabled. Set to false if colours look inverted.
 constexpr bool kInvertDisplay = true;
-// Gamma after init. The ILI9341_2_DRIVER tables end the positive curve with
-// zeros, so bright tones come out dark and photos look like a negative (flat
-// UI colours hide it). Standard = the ILI9341 datasheet / ILI9341_DRIVER tables.
-enum class PanelGamma : uint8_t {
-  Driver,    // keep the init tables
-  Reselect,  // GAMMASET 2 then 1 (community fix for washed-out CYD panels)
-  Standard,  // write the standard positive / negative gamma tables
-};
-constexpr PanelGamma kPanelGamma = PanelGamma::Standard;
-constexpr uint32_t kGammaFixSettleMs = 120;  // Reselect: once, during setup()
+// Panel gamma tables (PanelGamma in settings.h), chosen on the device in the
+// photo viewer and stored in NVS. 1 = Standard (ILI9341 datasheet tables).
+constexpr uint8_t kDefaultPanelGamma = 1;
+constexpr uint32_t kGammaFixSettleMs = 120;  // PanelGamma::Reselect, on change only
 // ILI9341 frame rate (FRMCTR1 "RTNA" clocks per line): 0x1A ~73 Hz (the
 // ILI9341_2_DRIVER init), 0x13 ~100 Hz, 0x10 ~119 Hz. A higher refresh rate
 // hides the slow "rolling" shimmer of these TN panels. 0 keeps the init value.
@@ -66,6 +60,11 @@ constexpr uint8_t kMaxPhotos = 64;
 constexpr uint8_t kMaxPhotoPathLen = 63;
 constexpr uint32_t kPhotoSlideMs = 15000;  // slideshow: next photo after this
 constexpr uint32_t kPhotoHintMs = 2000;    // tap-zone hint shown on opening
+// Photo tone correction (lifted shadows / blue tint of the inverted panel):
+// level 0 = off .. kPhotoToneLevels - 1 = strongest; chosen in the viewer.
+constexpr uint8_t kPhotoToneLevels = 5;
+constexpr uint8_t kDefaultPhotoTone = 2;
+constexpr uint32_t kPhotoLabelMs = 2500;   // gamma / tone label over the photo
 
 // ---------------------------------------------------------------------------
 // Settings (stored in NVS via Preferences)

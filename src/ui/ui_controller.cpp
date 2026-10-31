@@ -1,16 +1,10 @@
 #include "ui_controller.h"
 
 #include "config.h"
+#include "panel_gamma.h"
 #include "strings.h"
 
 namespace {
-constexpr uint8_t kIliGammaSet = 0x26;  // ILI9341 "Gamma Set" command
-constexpr uint8_t kGammaCurve1 = 0x01, kGammaCurve2 = 0x02;
-constexpr uint8_t kIliPositiveGamma = 0xE0, kIliNegativeGamma = 0xE1;
-constexpr uint8_t kStandardPositiveGamma[] = {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1,
-                                              0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00};
-constexpr uint8_t kStandardNegativeGamma[] = {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1,
-                                              0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F};
 constexpr uint8_t kIliFrameRate = 0xB1;  // FRMCTR1: DIVA, RTNA
 constexpr uint8_t kFrameRateDivA = 0x00;  // fosc / 1
 
@@ -41,23 +35,8 @@ UiController::UiController(TFT_eSPI& tft)
 void UiController::begin(const Settings& settings) {
   tft_.setRotation(config::kScreenRotation);
   tft_.invertDisplay(config::kInvertDisplay);
-  if (config::kPanelGamma == config::PanelGamma::Reselect) {
-    // Switching curves and back reloads the gamma tables (setup only).
-    tft_.writecommand(kIliGammaSet);
-    tft_.writedata(kGammaCurve2);
-    delay(config::kGammaFixSettleMs);
-    tft_.writecommand(kIliGammaSet);
-    tft_.writedata(kGammaCurve1);
-  } else if (config::kPanelGamma == config::PanelGamma::Standard) {
-    tft_.writecommand(kIliPositiveGamma);
-    for (uint8_t v : kStandardPositiveGamma) {
-      tft_.writedata(v);
-    }
-    tft_.writecommand(kIliNegativeGamma);
-    for (uint8_t v : kStandardNegativeGamma) {
-      tft_.writedata(v);
-    }
-  }
+  applyPanelGamma(tft_, settings.panelGamma);
+  photos_.setTone(settings.photoTone);
   if (config::kPanelFrameRateRtna != 0) {
     tft_.writecommand(kIliFrameRate);
     tft_.writedata(kFrameRateDivA);
@@ -119,8 +98,7 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
     case Screen::Search:
       return updateSearch(state, touch);
     case Screen::Photos:
-      updatePhotos(state, touch, now);
-      return UiCommand{};
+      return updatePhotos(state, touch, now);
     case Screen::Calibration: {
       UiCommand cmd;
       calibration_.handleTap(touch, now);
@@ -363,12 +341,31 @@ UiCommand UiController::updateCities(const UiState& state, const TouchEvent& tou
   return cmd;
 }
 
-void UiController::updatePhotos(const UiState& state, const TouchEvent& touch, uint32_t now) {
+UiCommand UiController::updatePhotos(const UiState& state, const TouchEvent& touch,
+                                     uint32_t now) {
+  UiCommand cmd;
   if (!touch.tapped) {
     photos_.update(state, now);
-    return;
+    return cmd;
   }
-  switch (photos_.hitTest(touch.x)) {
+  switch (photos_.hitTest(touch.x, touch.y)) {
+    case PhotoTarget::Gamma: {
+      const PanelGamma next = static_cast<PanelGamma>(
+          (static_cast<uint8_t>(state.panelGamma) + 1) % static_cast<uint8_t>(PanelGamma::Count));
+      applyPanelGamma(tft_, next);
+      photos_.showGamma(next);
+      cmd.action = UiAction::SetPanelGamma;
+      cmd.value = static_cast<uint8_t>(next);
+      break;
+    }
+    case PhotoTarget::Tone: {
+      const uint8_t next = (state.photoTone + 1) % config::kPhotoToneLevels;
+      photos_.setTone(next);
+      photos_.showTone(state, next);
+      cmd.action = UiAction::SetPhotoTone;
+      cmd.value = next;
+      break;
+    }
     case PhotoTarget::Back:
       showSettings(state);
       break;
@@ -379,6 +376,7 @@ void UiController::updatePhotos(const UiState& state, const TouchEvent& touch, u
       photos_.step(state, 1);
       break;
   }
+  return cmd;
 }
 
 UiCommand UiController::updateSearch(const UiState& state, const TouchEvent& touch) {

@@ -41,7 +41,7 @@ class UiController {
 
   UiCommand updateDashboard(const UiState& state, const TouchEvent& touch, uint32_t now);
   UiCommand updateSettings(const UiState& state, const TouchEvent& touch, uint32_t now);
-  void updatePhotos(const UiState& state, const TouchEvent& touch, uint32_t now);
+  UiCommand updatePhotos(const UiState& state, const TouchEvent& touch, uint32_t now);
   UiCommand updateWifi(const UiState& state, const TouchEvent& touch);
   UiCommand updateKeyboard(const UiState& state, const TouchEvent& touch, uint32_t now);
   UiCommand updateConnect(const UiState& state, const TouchEvent& touch, uint32_t now);

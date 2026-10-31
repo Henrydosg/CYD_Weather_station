@@ -122,6 +122,14 @@ static void apply(const UiCommand& cmd, uint32_t now) {
     case UiAction::ScanPhotos:
       photos.scan();
       break;
+    case UiAction::SetPanelGamma:
+      settings.panelGamma = static_cast<PanelGamma>(cmd.value);
+      store.save(settings);
+      break;
+    case UiAction::SetPhotoTone:
+      settings.photoTone = cmd.value;
+      store.save(settings);
+      break;
     case UiAction::None:
       break;
   }
@@ -179,6 +187,8 @@ void loop() {
   state.searchResults = geocoder.results();
   state.searchCount = geocoder.count();
   state.photos = &photos.list();
+  state.panelGamma = settings.panelGamma;
+  state.photoTone = settings.photoTone;
   state.timeValid = timeSync.isValid();
   state.utcNow = time(nullptr);
 

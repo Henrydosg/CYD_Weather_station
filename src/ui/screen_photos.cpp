@@ -1,6 +1,7 @@
 #include "screen_photos.h"
 
 #include <TJpg_Decoder.h>
+#include <math.h>
 
 #include "assets/fonts.h"
 #include "config.h"
@@ -16,6 +17,17 @@ constexpr int16_t kW = config::kScreenWidth;
 constexpr int16_t kH = config::kScreenHeight;
 constexpr int16_t kZoneW = kW / 3;
 constexpr uint8_t kMaxJpgScale = 8;  // TJpgDec scales by 1, 2, 4 or 8
+// Top corners: panel gamma (left) and photo tone (right)
+constexpr int16_t kCornerW = 80, kCornerH = 60;
+constexpr int16_t kCornerPillW = 64, kCornerPillH = 26, kCornerPillInset = 6;
+// Label shown over the photo after a change
+constexpr int16_t kLabelY = 8, kLabelH = 28, kLabelPadX = 16;
+
+// Tone correction per level: power curve that pulls the lifted shadows down,
+// and a blue gain against the blue tint of the inverted panel.
+constexpr float kToneGamma[config::kPhotoToneLevels] = {1.0f, 1.2f, 1.45f, 1.7f, 2.0f};
+constexpr float kToneBlueGain[config::kPhotoToneLevels] = {1.0f, 0.97f, 0.93f, 0.9f, 0.86f};
+constexpr int kRed5 = 32, kGreen6 = 64;  // RGB565 channel sizes
 
 // Hint screen
 constexpr int16_t kTitleMidY = 20;
@@ -26,11 +38,27 @@ constexpr int16_t kCountMidY = 218;
 constexpr int16_t kMessageMidY = kH / 2 - 12, kMessageSubMidY = kH / 2 + 16;
 
 TFT_eSPI* gTft = nullptr;
+bool gToneOn = false;
+uint8_t gLutR[kRed5], gLutG[kGreen6], gLutB[kRed5];
 
-// TJpgDec output: one decoded block (up to 16 x 16 px) straight to the panel.
+uint8_t curve(int value, int maxValue, float gamma, float gain) {
+  const float v = powf(static_cast<float>(value) / maxValue, gamma) * gain * maxValue;
+  return static_cast<uint8_t>(lroundf(fminf(v, static_cast<float>(maxValue))));
+}
+
+// TJpgDec output: one decoded block (up to 16 x 16 px) straight to the panel,
+// tone-corrected first. The pixels are byte-swapped RGB565.
 bool pushBlock(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
   if (y >= kH) {
     return false;  // below the screen: stop decoding
+  }
+  if (gToneOn) {
+    for (uint32_t i = 0, n = static_cast<uint32_t>(w) * h; i < n; ++i) {
+      const uint16_t p = static_cast<uint16_t>((bitmap[i] >> 8) | (bitmap[i] << 8));
+      const uint16_t q = static_cast<uint16_t>((gLutR[p >> 11] << 11) |
+                                               (gLutG[(p >> 5) & 0x3F] << 5) | gLutB[p & 0x1F]);
+      bitmap[i] = static_cast<uint16_t>((q >> 8) | (q << 8));
+    }
   }
   gTft->pushImage(x, y, w, h, bitmap);
   return true;
@@ -79,7 +107,9 @@ void ScreenPhotos::update(const UiState& s, uint32_t now) {
       }
       break;
     case Phase::Showing:
-      if (list->count > 1 && now - phaseAt_ >= config::kPhotoSlideMs) {
+      if (labelShown_ && now - labelAt_ >= config::kPhotoLabelMs) {
+        step(s, 0);  // redraw without the label
+      } else if (list->count > 1 && now - phaseAt_ >= config::kPhotoSlideMs) {
         step(s, 1);
       }
       break;
@@ -88,9 +118,15 @@ void ScreenPhotos::update(const UiState& s, uint32_t now) {
   }
 }
 
-PhotoTarget ScreenPhotos::hitTest(int16_t x) const {
+PhotoTarget ScreenPhotos::hitTest(int16_t x, int16_t y) const {
   if (phase_ != Phase::Hint && phase_ != Phase::Showing) {
     return PhotoTarget::Back;  // any tap leaves a message screen
+  }
+  if (y < kCornerH && x < kCornerW) {
+    return PhotoTarget::Gamma;
+  }
+  if (y < kCornerH && x >= kW - kCornerW) {
+    return PhotoTarget::Tone;
   }
   if (x < kZoneW) {
     return PhotoTarget::Prev;
@@ -108,8 +144,55 @@ void ScreenPhotos::step(const UiState& s, int8_t delta) {
     index_ = static_cast<uint8_t>((index_ + list->count + delta) % list->count);
   }
   phase_ = Phase::Showing;
+  labelShown_ = false;
   drawPhoto(list->paths[index_]);
   phaseAt_ = millis();  // decoding took a while
+}
+
+void ScreenPhotos::setTone(uint8_t level) {
+  const uint8_t l = level < config::kPhotoToneLevels ? level : 0;
+  gToneOn = l != 0;
+  for (int i = 0; i < kRed5; ++i) {
+    gLutR[i] = curve(i, kRed5 - 1, kToneGamma[l], 1.0f);
+    gLutB[i] = curve(i, kRed5 - 1, kToneGamma[l], kToneBlueGain[l]);
+  }
+  for (int i = 0; i < kGreen6; ++i) {
+    gLutG[i] = curve(i, kGreen6 - 1, kToneGamma[l], 1.0f);
+  }
+}
+
+// No redraw: the panel applies a new gamma to the pixels already shown.
+void ScreenPhotos::showGamma(PanelGamma mode) {
+  static const Str kNames[] = {Str::GammaDriver, Str::GammaStandard, Str::GammaReselect};
+  const uint8_t m = static_cast<uint8_t>(mode);
+  char buf[48];
+  snprintf(buf, sizeof(buf), tr(Str::PanelGammaFmt),
+           tr(m < sizeof(kNames) / sizeof(kNames[0]) ? kNames[m] : Str::GammaDriver));
+  drawLabel(buf);
+}
+
+void ScreenPhotos::showTone(const UiState& s, uint8_t level) {
+  if (phase_ == Phase::Showing) {
+    step(s, 0);  // redraw with the new tone curve
+  }
+  char buf[48];
+  if (level == 0) {
+    strlcpy(buf, tr(Str::PhotoToneOff), sizeof(buf));
+  } else {
+    snprintf(buf, sizeof(buf), tr(Str::PhotoToneFmt), level, config::kPhotoToneLevels - 1);
+  }
+  drawLabel(buf);
+}
+
+void ScreenPhotos::drawLabel(const char* text) {
+  useFont(tft_, kFontSmall);
+  const int16_t w = tft_.textWidth(text) + 2 * kLabelPadX;
+  ui::drawPill(tft_, (kW - w) / 2, kLabelY, w, kLabelH, text, kTrack, kInk, false);
+  labelShown_ = phase_ == Phase::Showing;
+  labelAt_ = millis();
+  if (phase_ == Phase::Hint) {
+    phaseAt_ = labelAt_;  // keep the hint up while adjusting
+  }
 }
 
 void ScreenPhotos::drawHint(const PhotoList& list) {
@@ -118,6 +201,11 @@ void ScreenPhotos::drawHint(const PhotoList& list) {
   tft_.setTextColor(kInk, kBackground);
   tft_.setTextDatum(MC_DATUM);
   tft_.drawString(tr(Str::Photos), kW / 2, kTitleMidY);
+  useFont(tft_, kFontTiny);
+  ui::drawPill(tft_, kCornerPillInset, kCornerPillInset, kCornerPillW, kCornerPillH,
+               tr(Str::PhotoCornerGamma), kAccent, kAccent, true);
+  ui::drawPill(tft_, kW - kCornerPillInset - kCornerPillW, kCornerPillInset, kCornerPillW,
+               kCornerPillH, tr(Str::PhotoCornerTone), kAccent, kAccent, true);
 
   for (int i = 1; i < 3; ++i) {
     tft_.drawFastVLine(i * kZoneW, kZoneTop, kZoneBottom - kZoneTop, kLine);

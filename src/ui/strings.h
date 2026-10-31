@@ -82,6 +82,14 @@ enum class Str : uint8_t {
   PhotoNoCard,
   PhotoNoFilesFmt,  // printf format, one %s (folder)
   PhotoError,
+  PhotoCornerGamma,
+  PhotoCornerTone,
+  PanelGammaFmt,    // printf format, one %s (GammaDriver / GammaStandard / GammaReselect)
+  GammaDriver,
+  GammaStandard,
+  GammaReselect,
+  PhotoToneFmt,     // printf format, %u (level) and %u (strongest level)
+  PhotoToneOff,
   Count,
 };
 
