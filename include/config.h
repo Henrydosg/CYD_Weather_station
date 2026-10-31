@@ -15,8 +15,8 @@ constexpr uint8_t kScreenRotation = 1;  // landscape, 320 x 240
 // display inversion is enabled. Set to false if colours look inverted.
 constexpr bool kInvertDisplay = true;
 // Panel gamma tables (PanelGamma in settings.h), chosen on the device in the
-// photo viewer and stored in NVS. 1 = Standard (ILI9341 datasheet tables).
-constexpr uint8_t kDefaultPanelGamma = 1;
+// photo viewer and stored in NVS. 2 = Reselect, best on the user's board.
+constexpr uint8_t kDefaultPanelGamma = 2;
 constexpr uint32_t kGammaFixSettleMs = 120;  // PanelGamma::Reselect, on change only
 // ILI9341 frame rate (FRMCTR1 "RTNA" clocks per line): 0x1A ~73 Hz (the
 // ILI9341_2_DRIVER init), 0x13 ~100 Hz, 0x10 ~119 Hz. A higher refresh rate
@@ -63,7 +63,7 @@ constexpr uint32_t kPhotoHintMs = 2000;    // tap-zone hint shown on opening
 // Photo tone correction (lifted shadows / blue tint of the inverted panel):
 // level 0 = off .. kPhotoToneLevels - 1 = strongest; chosen in the viewer.
 constexpr uint8_t kPhotoToneLevels = 5;
-constexpr uint8_t kDefaultPhotoTone = 2;
+constexpr uint8_t kDefaultPhotoTone = 1;  // best on the user's board
 constexpr uint32_t kPhotoLabelMs = 2500;   // gamma / tone label over the photo
 
 // ---------------------------------------------------------------------------

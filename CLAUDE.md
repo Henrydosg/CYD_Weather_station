@@ -30,8 +30,8 @@ git-ignored and must never be committed. Never print WiFi passwords to Serial or
   otherwise every colour shows as its negative. The chip is ILI9341 (vendor spec, user
   confirmed). Inversion mirrors the gamma curve, so photos look washed out (lifted
   shadows, blue tint). Two run-time fixes, chosen in the photo viewer and kept in NVS:
-  panel gamma tables (`ui/panel_gamma`: Driver / Standard / Reselect, top-left corner)
-  and a photo tone curve (RGB565 LUT in `screen_photos`, 5 levels, top-right corner).
+  panel gamma tables (`ui/panel_gamma`: Driver / Standard / Reselect, top-left corner; best: Reselect)
+  and a photo tone curve (RGB565 LUT in `screen_photos`, 5 levels, top-right corner; best: level 1).
 - Touch: resistive, XPT2046 controller
 
 ### GPIO
