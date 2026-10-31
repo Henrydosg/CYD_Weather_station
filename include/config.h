@@ -14,10 +14,16 @@ constexpr uint8_t kScreenRotation = 1;  // landscape, 320 x 240
 // Some CYD panel variants (e.g. "TPM408-2.8") show a colour negative unless
 // display inversion is enabled. Set to false if colours look inverted.
 constexpr bool kInvertDisplay = true;
-// Panel gamma tables (PanelGamma in settings.h), chosen on the device in the
-// photo viewer and stored in NVS. 2 = Reselect, best on the user's board.
-constexpr uint8_t kDefaultPanelGamma = 2;
-constexpr uint32_t kGammaFixSettleMs = 120;  // PanelGamma::Reselect, on change only
+// ILI9341 gamma tables written after init (ui/panel_gamma). Inversion mirrors
+// the gamma curve, so photos come out washed out; Reselect looked best on the
+// user's board (all three compared on 2026-10-31).
+enum class PanelGamma : uint8_t {
+  Driver,    // the ILI9341_2_DRIVER init tables
+  Standard,  // ILI9341 datasheet tables
+  Reselect,  // driver tables, then GAMMASET 2 -> 1 (community CYD fix)
+};
+constexpr PanelGamma kPanelGamma = PanelGamma::Reselect;
+constexpr uint32_t kGammaFixSettleMs = 120;  // Reselect, once during setup()
 // ILI9341 frame rate (FRMCTR1 "RTNA" clocks per line): 0x1A ~73 Hz (the
 // ILI9341_2_DRIVER init), 0x13 ~100 Hz, 0x10 ~119 Hz. A higher refresh rate
 // hides the slow "rolling" shimmer of these TN panels. 0 keeps the init value.
@@ -61,10 +67,10 @@ constexpr uint8_t kMaxPhotoPathLen = 63;
 constexpr uint32_t kPhotoSlideMs = 15000;  // slideshow: next photo after this
 constexpr uint32_t kPhotoHintMs = 2000;    // tap-zone hint shown on opening
 // Photo tone correction (lifted shadows / blue tint of the inverted panel):
-// level 0 = off .. kPhotoToneLevels - 1 = strongest; chosen in the viewer.
+// level 0 = off .. kPhotoToneLevels - 1 = strongest (see screen_photos.cpp).
+// Level 1 looked best on the user's board with PanelGamma::Reselect.
 constexpr uint8_t kPhotoToneLevels = 5;
-constexpr uint8_t kDefaultPhotoTone = 1;  // best on the user's board
-constexpr uint32_t kPhotoLabelMs = 2500;   // gamma / tone label over the photo
+constexpr uint8_t kPhotoTone = 1;
 
 // ---------------------------------------------------------------------------
 // Settings (stored in NVS via Preferences)

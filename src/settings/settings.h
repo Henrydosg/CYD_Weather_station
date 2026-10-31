@@ -76,14 +76,6 @@ bool addCity(SavedCities& cities, const City& city);
 bool moveCity(SavedCities& cities, uint8_t index, int8_t delta);
 bool removeCity(SavedCities& cities, uint8_t index);
 
-// ILI9341 gamma tables written after init (see ui/panel_gamma).
-enum class PanelGamma : uint8_t {
-  Driver,    // the ILI9341_2_DRIVER init tables
-  Standard,  // ILI9341 datasheet tables
-  Reselect,  // driver tables, then GAMMASET 2 -> 1 (community CYD fix)
-  Count,
-};
-
 struct Settings {
   Language language;
   TouchCalibration touch;
@@ -91,6 +83,4 @@ struct Settings {
   SavedNetworks networks;
   SavedCities cities;    // never empty (defaults to config::kDefaultCity*)
   uint8_t rotateSec;     // one of config::kRotateChoicesSec
-  PanelGamma panelGamma;
-  uint8_t photoTone;     // 0 = off .. config::kPhotoToneLevels - 1
 };

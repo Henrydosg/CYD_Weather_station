@@ -29,9 +29,9 @@ git-ignored and must never be committed. Never print WiFi passwords to Serial or
   panel variant ("TPM408-2.8") needs display inversion: `config::kInvertDisplay = true`,
   otherwise every colour shows as its negative. The chip is ILI9341 (vendor spec, user
   confirmed). Inversion mirrors the gamma curve, so photos look washed out (lifted
-  shadows, blue tint). Two run-time fixes, chosen in the photo viewer and kept in NVS:
-  panel gamma tables (`ui/panel_gamma`: Driver / Standard / Reselect, top-left corner; best: Reselect)
-  and a photo tone curve (RGB565 LUT in `screen_photos`, 5 levels, top-right corner; best: level 1).
+  shadows, blue tint). Two fixed settings, compared on the board by the user (keep them):
+  `config::kPanelGamma = Reselect` (`ui/panel_gamma`: Driver / Standard / Reselect) and
+  `config::kPhotoTone = 1` (RGB565 tone LUT in `screen_photos`, levels 0..4).
 - Touch: resistive, XPT2046 controller
 
 ### GPIO
@@ -114,9 +114,9 @@ src/
   ui/touch_input       XPT2046 over bit-banged SPI (same raw values as the old XPT2046_Touchscreen
                        library), debounced taps with calibrated screen coordinates
   ui/screen_photos     JPEG viewer: tap-zone hint, left = previous, middle = back, right = next,
-                       top corners = panel gamma / photo tone; slideshow every kPhotoSlideMs;
+                       tone curve kPhotoTone; slideshow every kPhotoSlideMs;
                        photos larger than 320x240 scaled 1/2..1/8
-  ui/panel_gamma       ILI9341 gamma tables (Driver / Standard / Reselect), switchable at run time
+  ui/panel_gamma       ILI9341 gamma tables (Driver / Standard / Reselect), config::kPanelGamma
   photos/photo_library mounts the SD card on VSPI on every scan, lists /photos/*.jpg (sorted)
   ui/assets/           GENERATED - fonts.* and icons.* (do not edit by hand)
 tools/
@@ -165,7 +165,7 @@ weather client (`setCities()` keeps data of cities still in the list).
   `PhotoList::version`. Tapping the middle third goes straight back to the main screen.
   Put baseline JPEGs (ideally 320x240) in `/photos` on a FAT32 card.
   Decoding blocks the loop ~0.3-0.5 s per photo (bounded, like an HTTP request).
-  `tools/make_test_chart.py` writes colour bars + a grey ramp to tune gamma / tone.
+  `tools/make_test_chart.py` writes colour bars + a grey ramp to check gamma / tone.
 - Language: `ui/strings.cpp` has one {Vietnamese, English} pair per `Str` id, in enum
   order (checked by a static_assert). Never hard-code UI text in screens. Weather texts are
   local (per WMO code), so changing language needs no refetch.

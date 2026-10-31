@@ -259,8 +259,6 @@ def photos_hint():
     """screen_photos.cpp: tap zones shown when the viewer opens"""
     img, d = new_screen()
     d.text((160, 20), "Ảnh", font=F["medium"], fill=C["Ink"], anchor="mm")
-    pill(img, 6, 6, 64, 26, "Gamma", C["Accent"], C["Accent"], True, "tiny")
-    pill(img, 320 - 6 - 64, 6, 64, 26, "Màu", C["Accent"], C["Accent"], True, "tiny")
     zone = 320 // 3
     for i in (1, 2):
         d.line((i * zone, 44, i * zone, 195), fill=C["Line"])

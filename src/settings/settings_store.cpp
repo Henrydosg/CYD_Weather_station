@@ -14,8 +14,8 @@ constexpr char kKeyNetworks[] = "nets";
 constexpr char kKeyCities[] = "cities2";  // City with names in both languages
 constexpr char kKeyCitiesV1[] = "cities";  // older layout, one name per city
 constexpr char kKeyRotate[] = "rot";
-constexpr char kKeyPanelGamma[] = "pgam";
-constexpr char kKeyPhotoTone[] = "ptone";
+// Gamma / tone picked on the device by an earlier firmware; now fixed in config.h.
+constexpr const char* kObsoleteKeys[] = {"pgam", "ptone"};
 constexpr bool kReadOnly = true;
 
 constexpr uint8_t kVi = static_cast<uint8_t>(Language::Vietnamese);
@@ -49,8 +49,6 @@ Settings defaults() {
   home.latitude = config::kDefaultCityLat;
   home.longitude = config::kDefaultCityLon;
   s.rotateSec = config::kDefaultRotateSec;
-  s.panelGamma = static_cast<PanelGamma>(config::kDefaultPanelGamma);
-  s.photoTone = config::kDefaultPhotoTone;
   return s;
 }
 
@@ -120,11 +118,6 @@ Settings SettingsStore::load() {
   }
   const uint8_t rot = prefs.getUChar(kKeyRotate, config::kDefaultRotateSec);
   s.rotateSec = validRotation(rot) ? rot : config::kDefaultRotateSec;
-  const uint8_t gamma = prefs.getUChar(kKeyPanelGamma, config::kDefaultPanelGamma);
-  s.panelGamma = static_cast<PanelGamma>(
-      gamma < static_cast<uint8_t>(PanelGamma::Count) ? gamma : config::kDefaultPanelGamma);
-  const uint8_t tone = prefs.getUChar(kKeyPhotoTone, config::kDefaultPhotoTone);
-  s.photoTone = tone < config::kPhotoToneLevels ? tone : config::kDefaultPhotoTone;
   prefs.end();
 
   // Counts only; passwords are never logged.
@@ -150,8 +143,11 @@ void SettingsStore::save(const Settings& s) {
     prefs.remove(kKeyCitiesV1);  // migrated on load
   }
   prefs.putUChar(kKeyRotate, s.rotateSec);
-  prefs.putUChar(kKeyPanelGamma, static_cast<uint8_t>(s.panelGamma));
-  prefs.putUChar(kKeyPhotoTone, s.photoTone);
+  for (const char* key : kObsoleteKeys) {
+    if (prefs.isKey(key)) {
+      prefs.remove(key);
+    }
+  }
   prefs.end();
   Serial.println("[settings] saved");
 }

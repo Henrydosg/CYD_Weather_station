@@ -35,8 +35,8 @@ UiController::UiController(TFT_eSPI& tft)
 void UiController::begin(const Settings& settings) {
   tft_.setRotation(config::kScreenRotation);
   tft_.invertDisplay(config::kInvertDisplay);
-  applyPanelGamma(tft_, settings.panelGamma);
-  photos_.setTone(settings.photoTone);
+  applyPanelGamma(tft_, config::kPanelGamma);
+  photos_.setTone(config::kPhotoTone);
   if (config::kPanelFrameRateRtna != 0) {
     tft_.writecommand(kIliFrameRate);
     tft_.writedata(kFrameRateDivA);
@@ -108,7 +108,8 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
     case Screen::Search:
       return updateSearch(state, touch);
     case Screen::Photos:
-      return updatePhotos(state, touch, now);
+      updatePhotos(state, touch, now);
+      return UiCommand{};
     case Screen::Calibration: {
       UiCommand cmd;
       calibration_.handleTap(touch, now);
@@ -351,31 +352,12 @@ UiCommand UiController::updateCities(const UiState& state, const TouchEvent& tou
   return cmd;
 }
 
-UiCommand UiController::updatePhotos(const UiState& state, const TouchEvent& touch,
-                                     uint32_t now) {
-  UiCommand cmd;
+void UiController::updatePhotos(const UiState& state, const TouchEvent& touch, uint32_t now) {
   if (!touch.tapped) {
     photos_.update(state, now);
-    return cmd;
+    return;
   }
-  switch (photos_.hitTest(touch.x, touch.y)) {
-    case PhotoTarget::Gamma: {
-      const PanelGamma next = static_cast<PanelGamma>(
-          (static_cast<uint8_t>(state.panelGamma) + 1) % static_cast<uint8_t>(PanelGamma::Count));
-      applyPanelGamma(tft_, next);
-      photos_.showGamma(next);
-      cmd.action = UiAction::SetPanelGamma;
-      cmd.value = static_cast<uint8_t>(next);
-      break;
-    }
-    case PhotoTarget::Tone: {
-      const uint8_t next = (state.photoTone + 1) % config::kPhotoToneLevels;
-      photos_.setTone(next);
-      photos_.showTone(state, next);
-      cmd.action = UiAction::SetPhotoTone;
-      cmd.value = next;
-      break;
-    }
+  switch (photos_.hitTest(touch.x)) {
     case PhotoTarget::Back:
       showDashboard();  // straight back to the weather screen
       break;
@@ -386,7 +368,6 @@ UiCommand UiController::updatePhotos(const UiState& state, const TouchEvent& tou
       photos_.step(state, 1);
       break;
   }
-  return cmd;
 }
 
 UiCommand UiController::updateSearch(const UiState& state, const TouchEvent& touch) {

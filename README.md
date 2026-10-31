@@ -47,21 +47,22 @@ bàn phím hay đồ thị 2 phút thì máy tự về màn chính.
 |---|---|
 | 1/3 trái / 1/3 phải | Ảnh trước / ảnh sau |
 | 1/3 giữa | **Về màn thời tiết** |
-| Góc trên trái | Đổi gamma màn hình: gốc / chuẩn / nạp lại (mặc định: nạp lại) |
-| Góc trên phải | Đổi mức bù tông màu ảnh: tắt, 1 – 4 (mặc định: 1) |
 
-Lựa chọn gamma và tông màu được lưu lại. Có thể rút / cắm thẻ: mỗi lần mở màn Ảnh máy đọc
-lại thẻ.
+Màu ảnh đã được chỉnh sẵn cho panel này: gamma **nạp lại** (`kPanelGamma = Reselect`) và bù
+tông màu **mức 1/4** (`kPhotoTone = 1`) trong `include/config.h`. Muốn đổi thì sửa hai giá
+trị đó rồi nạp lại.
 
-Ảnh mẫu để chỉnh màu: `python tools/make_test_chart.py --out previews/00_test_chart.jpg`,
-chép vào `/photos`, chỉnh tới khi thang xám đều từ đen tới trắng.
+Có thể rút / cắm thẻ: mỗi lần mở màn Ảnh máy đọc lại thẻ.
+
+Ảnh mẫu để kiểm tra màu: `python tools/make_test_chart.py --out previews/00_test_chart.jpg`,
+chép vào `/photos`; thang xám phải đều từ đen tới trắng.
 
 ## Khi gặp sự cố
 
 - **Màu bị âm bản toàn màn hình:** đổi `kInvertDisplay` trong `include/config.h`
   (panel TPM408-2.8 cần `true`).
 - **Ảnh bệch, ngả xanh:** nhìn thẳng màn hình (panel TN rất kém khi nhìn chếch từ trên
-  xuống), rồi thử các góc trên của màn Ảnh.
+  xuống); nếu vẫn bệch, tăng `kPhotoTone` (0 – 4) trong `include/config.h`.
 - **Chạm lệch:** Cài đặt → Hiệu chuẩn cảm ứng.
 - **"Không thấy thẻ nhớ":** kiểm tra thẻ FAT32, cắm chặt, rồi mở lại màn Ảnh.
 - **Không có dữ liệu thời tiết:** kiểm tra WiFi trong Cài đặt; log ở Serial Monitor 115200 baud.

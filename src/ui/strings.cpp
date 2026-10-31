@@ -85,14 +85,6 @@ const Text kTexts[] = {
     {"Không thấy thẻ nhớ", "No SD card found"},
     {"Không có ảnh .jpg trong %s", "No .jpg photos in %s"},
     {"Không đọc được ảnh", "Cannot read this photo"},
-    {"Gamma", "Gamma"},
-    {"Màu", "Tone"},
-    {"Gamma màn hình: %s", "Panel gamma: %s"},
-    {"gốc", "driver"},
-    {"chuẩn", "standard"},
-    {"nạp lại", "reselect"},
-    {"Bù tông màu: %u / %u", "Photo tone: %u / %u"},
-    {"Bù tông màu: tắt", "Photo tone: off"},
 };
 static_assert(sizeof(kTexts) / sizeof(kTexts[0]) == static_cast<size_t>(Str::Count),
               "kTexts must have one entry per Str id");

@@ -35,8 +35,6 @@ struct UiState {
   uint8_t searchCount;
   // Photos on the SD card (scanned on UiAction::ScanPhotos)
   const PhotoList* photos;
-  PanelGamma panelGamma;    // current settings, changed in the photo viewer
-  uint8_t photoTone;
   // Clock
   bool timeValid;
   time_t utcNow;            // valid when timeValid
@@ -55,8 +53,6 @@ enum class UiAction : uint8_t {
   MoveCity,          // see UiCommand::index / delta
   RemoveCity,        // see UiCommand::index
   ScanPhotos,        // (re)mount the SD card and list the photos
-  SetPanelGamma,     // see UiCommand::value (PanelGamma), already applied by the UI
-  SetPhotoTone,      // see UiCommand::value (0 .. config::kPhotoToneLevels - 1)
 };
 
 struct UiCommand {

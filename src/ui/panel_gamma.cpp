@@ -36,7 +36,8 @@ void writeTables(TFT_eSPI& tft, const GammaTables& t) {
 
 }  // namespace
 
-void applyPanelGamma(TFT_eSPI& tft, PanelGamma mode) {
+void applyPanelGamma(TFT_eSPI& tft, config::PanelGamma mode) {
+  using config::PanelGamma;
   switch (mode) {
     case PanelGamma::Standard:
       writeTables(tft, kStandardTables);
@@ -51,7 +52,6 @@ void applyPanelGamma(TFT_eSPI& tft, PanelGamma mode) {
       tft.writedata(kGammaCurve1);
       break;
     case PanelGamma::Driver:
-    case PanelGamma::Count:
       writeTables(tft, kDriverTables);
       break;
   }
