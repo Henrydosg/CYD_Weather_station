@@ -21,13 +21,6 @@ constexpr uint32_t kGammaFixSettleMs = 120;  // once, during setup()
 constexpr int16_t kScreenWidth = 320;
 constexpr int16_t kScreenHeight = 240;
 
-// Sky colours follow the time of day. Dawn and dusk are windows around the
-// sunrise / sunset reported by the weather provider (minutes).
-constexpr int16_t kDawnBeforeMin = 40;
-constexpr int16_t kDawnAfterMin = 40;
-constexpr int16_t kDuskBeforeMin = 60;
-constexpr int16_t kDuskAfterMin = 30;
-
 // ---------------------------------------------------------------------------
 // Touch controller XPT2046 (own SPI bus, VSPI)
 // ---------------------------------------------------------------------------

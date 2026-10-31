@@ -67,7 +67,7 @@ constexpr int16_t kClockY = 30;
 constexpr int16_t kClockSize = 136;
 constexpr int16_t kClockMidX = kClockX + kClockSize / 2;
 
-// Glass card under the clock: digital time (clock sprite) and the date.
+// Card under the clock: digital time (clock sprite) and the date.
 constexpr int16_t kTimeCardX = 180;
 constexpr int16_t kTimeCardY = kClockY + kClockSize + 2;
 constexpr int16_t kTimeCardW = 132;
@@ -75,7 +75,6 @@ constexpr int16_t kTimeCardH = 50;
 // The digital readout sprite stays clear of the card's rounded corners.
 constexpr int16_t kDigitalX = kClockMidX - AnalogClock::kDigitalW / 2;
 constexpr int16_t kDigitalY = kTimeCardY + 2;
-constexpr int16_t kDateRow = 30;  // first card row of the date (below the digital time)
 constexpr int16_t kDateMidY = kTimeCardY + 39;
 
 constexpr int16_t kFooterY = 222;
@@ -132,10 +131,6 @@ void ScreenMain::begin() {
   firstFrame_ = true;
 }
 
-const Palette& ScreenMain::palette() const {
-  return palette_ != nullptr ? *palette_ : defaultPalette();
-}
-
 MainTarget ScreenMain::hitTest(int16_t x, int16_t y) const {
   if (ui::hit(x, y, kGearHitX, 0, config::kScreenWidth - kGearHitX, kHitH)) {
     return MainTarget::Settings;
@@ -150,14 +145,10 @@ void ScreenMain::update(const UiState& s) {
   const WeatherData* data = s.dataVersion > 0 ? s.data : nullptr;
   const struct tm* now = s.timeValid ? &s.localTime : nullptr;
 
-  // A new palette (weather or time of day changed) repaints the whole screen.
-  const Palette& palette = paletteFor(data, now);
-  const bool full = firstFrame_ || &palette != palette_;
+  const bool full = firstFrame_;
   if (full) {
-    palette_ = &palette;
-    ui::paintSky(tft_, palette, 0, 0, config::kScreenWidth, config::kScreenHeight);
-    ui::drawCard(tft_, palette, kTimeCardX, kTimeCardY, kTimeCardW, kTimeCardH);
-    clock_.setPalette(palette);
+    tft_.fillScreen(kBackground);
+    clock_.invalidate();
   }
 
   const bool newData = full || s.dataVersion != last_.dataVersion;
@@ -185,24 +176,22 @@ void ScreenMain::update(const UiState& s) {
 }
 
 void ScreenMain::drawHeader(WifiState wifi, uint8_t bars) {
-  ui::paintSky(tft_, *palette_, 0, 0, config::kScreenWidth, kHeaderH);
-  const uint16_t sky = skyAt(*palette_, kHeaderMidY);
+  tft_.fillRect(0, 0, config::kScreenWidth, kHeaderH, kBackground);
 
   useFont(tft_, kFontMedium);
-  tft_.setTextColor(kText, sky);
+  tft_.setTextColor(kInk, kBackground);
   tft_.setTextDatum(ML_DATUM);
   tft_.drawString(tr(Str::LocationName), kMargin + 2, kHeaderMidY);
 
   // Language pill shows the active language; tapping it toggles.
-  const uint16_t pill = glassAt(*palette_, kHeaderMidY);
-  tft_.fillSmoothRoundRect(kPillX, kPillY, kPillW, kPillH, kPillH / 2, pill, sky);
+  tft_.fillSmoothRoundRect(kPillX, kPillY, kPillW, kPillH, kPillH / 2, kAccent, kBackground);
   useFont(tft_, kFontSmall);
-  tft_.setTextColor(kText, pill);
+  tft_.setTextColor(kOnAccent, kAccent);
   tft_.setTextDatum(MC_DATUM);
   tft_.drawString(currentLanguage() == Language::English ? "EN" : "VI", kPillX + kPillW / 2,
                   kHeaderMidY);
 
-  drawIcon(tft_, kIconGear, kGearX, kGearY, *palette_, 0);
+  drawIcon(tft_, kIconGear, kGearX, kGearY, kBackground);
 
   // Signal bars: green by strength; one yellow/red bar while (re)connecting.
   uint16_t on = kOk;
@@ -213,11 +202,10 @@ void ScreenMain::drawHeader(WifiState wifi, uint8_t bars) {
     on = kError;
     bars = 1;
   }
-  const uint16_t off = blend(kTrackAlpha, kText, skyAt(*palette_, kBarBottomY));
   for (int i = 0; i < kBarCount; ++i) {
     const int16_t h = kBarMinH + i * kBarStepH;
     const int16_t x = kBarsX + i * (kBarW + kBarGap);
-    tft_.fillRect(x, kBarBottomY - h, kBarW, h, i < bars ? on : off);
+    tft_.fillRect(x, kBarBottomY - h, kBarW, h, i < bars ? on : kBarOff);
   }
 }
 
@@ -244,17 +232,17 @@ void ScreenMain::drawFitted(const char* text, int16_t x, int16_t y, int16_t maxW
 }
 
 void ScreenMain::drawWeather(const WeatherData* d) {
-  const uint16_t card = ui::drawCard(tft_, *palette_, kMargin, kWeatherY, kLeftW, kWeatherH);
+  ui::drawCard(tft_, kMargin, kWeatherY, kLeftW, kWeatherH);
 
   if (d == nullptr) {
     useFont(tft_, kFontSmall);
-    tft_.setTextColor(kMuted, card);
+    tft_.setTextColor(kMuted, kBackground);
     tft_.setTextDatum(MC_DATUM);
     tft_.drawString(tr(Str::WaitingForData), kMargin + kLeftW / 2, kWeatherY + kWeatherH / 2);
     return;
   }
 
-  drawIcon(tft_, weatherIcon(d->category, d->isDay), kIconX, kIconY, *palette_);
+  drawIcon(tft_, weatherIcon(d->category, d->isDay), kIconX, kIconY, kBackground);
 
   char buf[16];
   snprintf(buf, sizeof(buf), "%ld°", lroundf(d->temperatureC));
@@ -262,20 +250,20 @@ void ScreenMain::drawWeather(const WeatherData* d) {
   if (tft_.textWidth(buf) > kTempMaxW) {
     useFont(tft_, kFontMedium);
   }
-  tft_.setTextColor(temperatureColor(d->temperatureC), glassAt(*palette_, kTempMidY));
+  tft_.setTextColor(temperatureColor(d->temperatureC), kBackground);
   tft_.setTextDatum(MR_DATUM);
   tft_.drawString(buf, kTempRightX, kTempMidY);
 
-  tft_.setTextColor(palette_->accent, glassAt(*palette_, kDescMidY));
+  tft_.setTextColor(kAccent, kBackground);
   tft_.setTextDatum(ML_DATUM);
   drawFitted(d->description, kDescX, kDescMidY, kDescMaxW);
 }
 
 void ScreenMain::drawDetails(const WeatherData* d) {
-  ui::drawCard(tft_, *palette_, kMargin, kDetailsY, kLeftW, kDetailsH);
+  ui::drawCard(tft_, kMargin, kDetailsY, kLeftW, kDetailsH);
 
   char values[kRows][16];
-  uint16_t valueColor[kRows] = {kText, kText, kText, kText};
+  uint16_t valueColor[kRows] = {kInk, kInk, kInk, kInk};
   if (d != nullptr) {
     snprintf(values[0], sizeof(values[0]), "%ld°", lroundf(d->apparentC));
     valueColor[0] = temperatureColor(d->apparentC);
@@ -295,19 +283,17 @@ void ScreenMain::drawDetails(const WeatherData* d) {
   for (int i = 0; i < kRows; ++i) {
     const int16_t top = kDetailsY + 1 + i * kRowH;
     const int16_t mid = top + kRowH / 2;
-    const uint16_t card = glassAt(*palette_, mid);
     if (i > 0) {
-      tft_.drawFastHLine(kRowIconX, top, kLeftW - 16,
-                         blend(kLineAlpha, kText, glassAt(*palette_, top)));
+      tft_.drawFastHLine(kRowIconX, top, kLeftW - 16, kLine);
     }
-    drawIcon(tft_, *icons[i], kRowIconX, mid - kRowIconSize / 2, *palette_);
-    tft_.setTextColor(kMuted, card);
+    drawIcon(tft_, *icons[i], kRowIconX, mid - kRowIconSize / 2, kBackground);
+    tft_.setTextColor(kMuted, kBackground);
     tft_.setTextDatum(ML_DATUM);
     const int16_t w = tft_.drawString(tr(labels[i]), kRowLabelX, mid);
     if (i == kHumidityRow) {
       humLabelEnd = kRowLabelX + w;
     }
-    tft_.setTextColor(valueColor[i], card);
+    tft_.setTextColor(valueColor[i], kBackground);
     tft_.setTextDatum(MR_DATUM);
     tft_.drawString(values[i], kRowValueX, mid);
   }
@@ -315,21 +301,16 @@ void ScreenMain::drawDetails(const WeatherData* d) {
   // Humidity bar right after the label ("Độ ẩm" / "Humidity" differ in width).
   const int16_t barX = humLabelEnd + kHumBarGap;
   const int16_t barY = kDetailsY + 1 + kHumidityRow * kRowH + (kRowH - kHumBarH) / 2;
-  const uint16_t card = glassAt(*palette_, barY + kHumBarH / 2);
-  tft_.fillSmoothRoundRect(barX, barY, kHumBarW, kHumBarH, kHumBarH / 2,
-                           blend(kTrackAlpha, kText, card), card);
+  tft_.fillSmoothRoundRect(barX, barY, kHumBarW, kHumBarH, kHumBarH / 2, kTrack, kBackground);
   if (d != nullptr) {
     const float pct = constrain(d->humidityPct, 0.0f, 100.0f);
     const int16_t w = max<int16_t>(kHumBarH, lroundf(kHumBarW * pct / 100.0f));
-    tft_.fillSmoothRoundRect(barX, barY, w, kHumBarH, kHumBarH / 2, kBarFill, card);
+    tft_.fillSmoothRoundRect(barX, barY, w, kHumBarH, kHumBarH / 2, kAccent, kBackground);
   }
 }
 
 void ScreenMain::drawFooter(FetchStatus fetch, const WeatherData* d, uint32_t ageMin) {
-  // Darker glass strip: the gradient bottom can be light (dawn, dusk).
-  ui::drawGlass(tft_, *palette_, 0, kFooterY, config::kScreenWidth,
-                config::kScreenHeight - kFooterY, 0, kFooterGlassAlpha, false);
-  const uint16_t bg = glassAt(*palette_, kFooterMidY, kFooterGlassAlpha);
+  tft_.fillRect(0, kFooterY, config::kScreenWidth, config::kScreenHeight - kFooterY, kBackground);
   useFont(tft_, kFontSmall);
 
   char buf[32];
@@ -343,7 +324,7 @@ void ScreenMain::drawFooter(FetchStatus fetch, const WeatherData* d, uint32_t ag
     snprintf(buf, sizeof(buf), tr(Str::HoursAgoFmt),
              static_cast<unsigned long>(ageMin / kMinutesPerHour));
   }
-  tft_.setTextColor(kMuted, bg);
+  tft_.setTextColor(kMuted, kBackground);
   tft_.setTextDatum(ML_DATUM);
   tft_.drawString(buf, kMargin + 2, kFooterMidY);
 
@@ -354,17 +335,18 @@ void ScreenMain::drawFooter(FetchStatus fetch, const WeatherData* d, uint32_t ag
     case FetchStatus::Error:    msg = Str::UpdateFailed; color = kError; break;
     default: break;
   }
-  tft_.setTextColor(color, bg);
+  tft_.setTextColor(color, kBackground);
   tft_.setTextDatum(MR_DATUM);
   tft_.drawString(tr(msg), config::kScreenWidth - kMargin - 2, kFooterMidY);
 }
 
 void ScreenMain::drawDate(const struct tm* t) {
-  // Only the lower part of the time card; the clock sprite owns the top.
-  ui::drawGlass(tft_, *palette_, kTimeCardX, kTimeCardY, kTimeCardW, kTimeCardH, ui::kCardRadius,
-                kGlassAlpha, true, kDateRow);
+  // Repaints the whole time card (once a day); the clock sprite redraws the
+  // digital readout in the same loop iteration.
+  ui::drawCard(tft_, kTimeCardX, kTimeCardY, kTimeCardW, kTimeCardH);
+  clock_.invalidate();
   useFont(tft_, kFontSmall);
-  tft_.setTextColor(kMuted, glassAt(*palette_, kDateMidY));
+  tft_.setTextColor(kAccent, kBackground);
   tft_.setTextDatum(MC_DATUM);
   char buf[40];
   if (t != nullptr) {

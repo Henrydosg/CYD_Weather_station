@@ -21,17 +21,19 @@ OUT_DIR = ROOT / "src" / "ui" / "assets"
 
 BASE = 72        # design grid: all coordinates below are in 0..72 units
 SUPER = 8        # supersampling factor
-PREVIEW_BG = (22, 33, 58)  # matches the card colour in screen_main.cpp
+PREVIEW_BG = (255, 255, 255)  # white background and cards (src/ui/theme.h)
 
-# Palette
+# Palette (tuned for the white background)
 SUN_TOP, SUN_BOTTOM, SUN_RAY = (255, 224, 130), (255, 160, 0), (255, 179, 0)
-MOON_TOP, MOON_BOTTOM = (250, 248, 220), (214, 206, 160)
-CLOUD_TOP, CLOUD_BOTTOM = (255, 255, 255), (200, 213, 228)
-DARK_TOP, DARK_BOTTOM = (160, 172, 190), (96, 108, 128)
+MOON_TOP, MOON_BOTTOM = (255, 214, 102), (245, 170, 40)
+CLOUD_TOP, CLOUD_BOTTOM = (214, 234, 255), (165, 205, 248)
+DARK_TOP, DARK_BOTTOM = (148, 163, 189), (100, 116, 145)
 RAIN_TOP, RAIN_BOTTOM = (110, 205, 255), (30, 136, 229)
 BOLT_TOP, BOLT_BOTTOM = (255, 236, 130), (255, 145, 0)
-SNOW = (235, 245, 255)
-FOG_TOP, FOG_BOTTOM = (210, 220, 232), (150, 165, 185)
+SNOW = (125, 190, 240)
+FOG_TOP, FOG_BOTTOM = (170, 185, 205), (125, 140, 165)
+WIND_TOP, WIND_BOTTOM = (90, 160, 225), (40, 110, 190)
+GEAR = (12, 52, 120)  # theme::kInk
 
 
 class Canvas:
@@ -260,7 +262,7 @@ def mini_wind(c):
     c.line_mask(2, 11, 17, 11, 2.0, m)
     c.line_mask(2, 15, 10, 15, 2.0, m)
     d.arc([c.s(7.5), c.s(15), c.s(12.5), c.s(20) - 1], start=270, end=540, fill=255, width=w)
-    c.fill(m, (200, 230, 255), (140, 190, 230), 2, 18)
+    c.fill(m, WIND_TOP, WIND_BOTTOM, 2, 18)
 
 
 def mini_pressure(c):
@@ -290,7 +292,7 @@ def mini_gear(c):
     c.circle_mask(10, 10, 6.2, m)
     hole = c.circle_mask(10, 10, 2.6)
     d.bitmap((0, 0), hole, fill=0)
-    c.fill(m, (255, 255, 255), (215, 228, 245), 2, 18)
+    c.fill(m, GEAR)
 
 
 MINI_ICONS = [

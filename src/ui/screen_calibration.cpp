@@ -33,33 +33,31 @@ void solveAxis(int16_t rawA, int16_t rawB, int16_t pxA, int16_t pxB, int16_t siz
 
 }  // namespace
 
-void ScreenCalibration::start(const Palette& palette) {
-  palette_ = &palette;
+void ScreenCalibration::start() {
   step_ = Step::First;
   drawStep(tr(Str::CalTapTarget));
 }
 
 void ScreenCalibration::drawTarget(int16_t x, int16_t y, uint16_t color) {
-  const uint16_t sky = skyAt(*palette_, y);
-  tft_.drawWedgeLine(x - kArm, y, x + kArm, y, kStroke, kStroke, color, sky);
-  tft_.drawWedgeLine(x, y - kArm, x, y + kArm, kStroke, kStroke, color, sky);
-  tft_.drawSmoothCircle(x, y, kRingR, color, sky);
+  tft_.drawWedgeLine(x - kArm, y, x + kArm, y, kStroke, kStroke, color, kBackground);
+  tft_.drawWedgeLine(x, y - kArm, x, y + kArm, kStroke, kStroke, color, kBackground);
+  tft_.drawSmoothCircle(x, y, kRingR, color, kBackground);
 }
 
 void ScreenCalibration::drawStep(const char* message) {
-  ui::paintSky(tft_, *palette_, 0, 0, kW, kH);
+  tft_.fillScreen(kBackground);
   ui::useFont(tft_, kFontSmall);
   tft_.setTextDatum(MC_DATUM);
-  tft_.setTextColor(kText, skyAt(*palette_, kMessageY));
+  tft_.setTextColor(kInk, kBackground);
   tft_.drawString(message, kW / 2, kMessageY);
 
   if (step_ == Step::Done) {
     return;
   }
   const bool first = step_ == Step::First;
-  tft_.setTextColor(kMuted, skyAt(*palette_, kStepY));
+  tft_.setTextColor(kMuted, kBackground);
   tft_.drawString(first ? "1 / 2" : "2 / 2", kW / 2, kStepY);
-  drawTarget(first ? kX1 : kX2, first ? kY1 : kY2, kWarn);
+  drawTarget(first ? kX1 : kX2, first ? kY1 : kY2, kHighlight);
 }
 
 void ScreenCalibration::handleTap(const TouchEvent& ev, uint32_t now) {

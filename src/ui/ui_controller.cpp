@@ -39,13 +39,13 @@ void UiController::showMain() {
 
 void UiController::showSettings(const UiState& state) {
   screen_ = Screen::Settings;
-  settings_.show(main_.palette(), state);
+  settings_.show(state);
 }
 
 void UiController::showCalibration(Screen returnTo) {
   screen_ = Screen::Calibration;
   afterCalibration_ = returnTo;
-  calibration_.start(main_.palette());
+  calibration_.start();
 }
 
 UiCommand UiController::changeLanguage(Language lang, const UiState& state) {

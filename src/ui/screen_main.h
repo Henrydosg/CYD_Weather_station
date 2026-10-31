@@ -1,6 +1,5 @@
-// Main screen ("dynamic sky" theme): weather card + detail list on the left,
-// analog clock on the right, over a gradient that follows the weather.
-// Redraws only the regions whose inputs changed; a palette change redraws all.
+// Main screen (white theme): weather card + detail list on the left, analog
+// clock on the right. Redraws only the regions whose inputs changed.
 #pragma once
 
 #include <TFT_eSPI.h>
@@ -9,7 +8,6 @@
 #include "../net/wifi_manager.h"
 #include "../weather/weather_data.h"
 #include "analog_clock.h"
-#include "theme.h"
 
 struct UiState {
   WifiState wifi;
@@ -41,8 +39,6 @@ class ScreenMain {
   void update(const UiState& state);
 
   MainTarget hitTest(int16_t x, int16_t y) const;
-  // Palette currently on screen (other screens reuse it).
-  const theme::Palette& palette() const;
 
  private:
   void drawHeader(WifiState wifi, uint8_t bars);
@@ -54,7 +50,6 @@ class ScreenMain {
 
   TFT_eSPI& tft_;
   AnalogClock clock_;
-  const theme::Palette* palette_ = nullptr;
   bool firstFrame_ = true;
   uint8_t lastBars_ = 0;
   UiState last_{};

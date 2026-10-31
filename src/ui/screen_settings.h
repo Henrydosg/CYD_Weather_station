@@ -4,7 +4,6 @@
 #include <TFT_eSPI.h>
 
 #include "screen_main.h"
-#include "theme.h"
 
 enum class SettingsTarget : uint8_t {
   None,
@@ -19,7 +18,7 @@ class ScreenSettings {
   explicit ScreenSettings(TFT_eSPI& tft) : tft_(tft) {}
 
   // Full redraw.
-  void show(const theme::Palette& palette, const UiState& state);
+  void show(const UiState& state);
   // Redraws the WiFi row when the connection changes.
   void update(const UiState& state);
 
@@ -30,6 +29,5 @@ class ScreenSettings {
   void drawWifiRow(const UiState& state);
 
   TFT_eSPI& tft_;
-  const theme::Palette* palette_ = &theme::defaultPalette();
   WifiState lastWifi_ = WifiState::Idle;
 };

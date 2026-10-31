@@ -34,26 +34,24 @@ constexpr int16_t kWifiLine1 = kWifiY + 18, kWifiLine2 = kWifiY + 42;
 
 }  // namespace
 
-void ScreenSettings::show(const Palette& palette, const UiState& state) {
-  palette_ = &palette;
-  ui::paintSky(tft_, palette, 0, 0, config::kScreenWidth, config::kScreenHeight);
+void ScreenSettings::show(const UiState& state) {
+  tft_.fillScreen(kBackground);
 
   // Header: "< Settings"
-  const uint16_t sky = skyAt(palette, kHeaderMidY);
-  ui::drawChevron(tft_, kBackChevronX, kHeaderMidY, false, kText, sky);
+  ui::drawChevron(tft_, kBackChevronX, kHeaderMidY, false, kInk, kBackground);
   useFont(tft_, kFontMedium);
-  tft_.setTextColor(kText, sky);
+  tft_.setTextColor(kInk, kBackground);
   tft_.setTextDatum(ML_DATUM);
   tft_.drawString(tr(Str::Settings), kTitleX, kHeaderMidY);
 
   drawLanguageRow();
 
-  const uint16_t card = ui::drawCard(tft_, palette, kRowX, kCalY, kRowW, kCalH);
+  ui::drawCard(tft_, kRowX, kCalY, kRowW, kCalH);
   useFont(tft_, kFontSmall);
-  tft_.setTextColor(kText, card);
+  tft_.setTextColor(kInk, kBackground);
   tft_.setTextDatum(ML_DATUM);
   tft_.drawString(tr(Str::CalibrateTouch), kTextX, kCalY + kCalH / 2);
-  ui::drawChevron(tft_, kTextRightX, kCalY + kCalH / 2, true, kMuted, card);
+  ui::drawChevron(tft_, kTextRightX, kCalY + kCalH / 2, true, kMuted, kBackground);
 
   drawWifiRow(state);
 }
@@ -65,16 +63,16 @@ void ScreenSettings::update(const UiState& state) {
 }
 
 void ScreenSettings::drawLanguageRow() {
-  const uint16_t card = ui::drawCard(tft_, *palette_, kRowX, kLangY, kRowW, kLangH);
+  ui::drawCard(tft_, kRowX, kLangY, kRowW, kLangH);
   useFont(tft_, kFontSmall);
-  tft_.setTextColor(kText, card);
+  tft_.setTextColor(kInk, kBackground);
   tft_.setTextDatum(ML_DATUM);
   tft_.drawString(tr(Str::Language), kTextX, kLangY + kLangH / 2);
 
-  // Segmented control; the active language is a solid white pill.
-  const uint16_t track = blend(kTrackAlpha, kText, card);
+  // Segmented control; the active language is a solid accent pill.
   const int16_t trackX = kSegViX - 2, trackW = 2 * kSegW + kSegGap + 4;
-  tft_.fillSmoothRoundRect(trackX, kSegY - 2, trackW, kSegH + 4, (kSegH + 4) / 2, track, card);
+  tft_.fillSmoothRoundRect(trackX, kSegY - 2, trackW, kSegH + 4, (kSegH + 4) / 2, kTrack,
+                           kBackground);
 
   const bool en = currentLanguage() == Language::English;
   const struct {
@@ -84,30 +82,29 @@ void ScreenSettings::drawLanguageRow() {
   } segs[] = {{kSegViX, "Tiếng Việt", !en}, {kSegEnX, "English", en}};
   tft_.setTextDatum(MC_DATUM);
   for (const auto& seg : segs) {
-    uint16_t bg = track;
+    uint16_t bg = kTrack;
     if (seg.active) {
-      bg = kText;
-      tft_.fillSmoothRoundRect(seg.x, kSegY, kSegW, kSegH, kSegH / 2, kText, track);
+      bg = kAccent;
+      tft_.fillSmoothRoundRect(seg.x, kSegY, kSegW, kSegH, kSegH / 2, kAccent, kTrack);
     }
-    // The sky top is dark in every palette, so it reads well on the white pill.
-    tft_.setTextColor(seg.active ? palette_->skyTop : kText, bg);
+    tft_.setTextColor(seg.active ? kOnAccent : kInk, bg);
     tft_.drawString(seg.label, seg.x + kSegW / 2, kSegY + kSegH / 2);
   }
 }
 
 void ScreenSettings::drawWifiRow(const UiState& state) {
   lastWifi_ = state.wifi;
-  const uint16_t card = ui::drawCard(tft_, *palette_, kRowX, kWifiY, kRowW, kWifiH);
+  ui::drawCard(tft_, kRowX, kWifiY, kRowW, kWifiH);
   useFont(tft_, kFontSmall);
 
-  tft_.setTextColor(kText, card);
+  tft_.setTextColor(kInk, kBackground);
   tft_.setTextDatum(ML_DATUM);
   tft_.drawString(tr(Str::Network), kTextX, kWifiLine1);
   tft_.setTextDatum(MR_DATUM);
   tft_.drawString(state.ssid, kTextRightX, kWifiLine1);
 
   const bool up = state.wifi == WifiState::Connected;
-  tft_.setTextColor(up ? kOk : kMuted, card);
+  tft_.setTextColor(up ? kOk : kMuted, kBackground);
   char line[40];
   if (up) {
     snprintf(line, sizeof(line), "%s  (%d dBm)", state.ip, state.rssi);
