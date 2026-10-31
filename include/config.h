@@ -14,10 +14,16 @@ constexpr uint8_t kScreenRotation = 1;  // landscape, 320 x 240
 // Some CYD panel variants (e.g. "TPM408-2.8") show a colour negative unless
 // display inversion is enabled. Set to false if colours look inverted.
 constexpr bool kInvertDisplay = true;
-// Re-selects the ILI9341 gamma curve after init (GAMMASET 2 then 1), a fix
-// suggested for washed-out CYD panels. Try true and compare on the board.
-constexpr bool kGammaFix = false;
-constexpr uint32_t kGammaFixSettleMs = 120;  // once, during setup()
+// Gamma after init. The ILI9341_2_DRIVER tables end the positive curve with
+// zeros, so bright tones come out dark and photos look like a negative (flat
+// UI colours hide it). Standard = the ILI9341 datasheet / ILI9341_DRIVER tables.
+enum class PanelGamma : uint8_t {
+  Driver,    // keep the init tables
+  Reselect,  // GAMMASET 2 then 1 (community fix for washed-out CYD panels)
+  Standard,  // write the standard positive / negative gamma tables
+};
+constexpr PanelGamma kPanelGamma = PanelGamma::Standard;
+constexpr uint32_t kGammaFixSettleMs = 120;  // Reselect: once, during setup()
 // ILI9341 frame rate (FRMCTR1 "RTNA" clocks per line): 0x1A ~73 Hz (the
 // ILI9341_2_DRIVER init), 0x13 ~100 Hz, 0x10 ~119 Hz. A higher refresh rate
 // hides the slow "rolling" shimmer of these TN panels. 0 keeps the init value.

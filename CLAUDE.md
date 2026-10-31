@@ -27,7 +27,9 @@ git-ignored and must never be committed. Never print WiFi passwords to Serial or
 - MCU: ESP32-WROOM-32 (dual core 240 MHz, 4 MB flash, no PSRAM), `board = esp32dev`
 - Display: 2.8" ILI9341, 240x320, used in landscape (rotation 1, 320x240). This
   panel variant ("TPM408-2.8") needs display inversion: `config::kInvertDisplay = true`,
-  otherwise every colour shows as its negative.
+  otherwise every colour shows as its negative. The ILI9341_2_DRIVER gamma tables make
+  photos look like a negative (bright tones go dark); `config::kPanelGamma = Standard`
+  writes the standard ILI9341 tables after init.
 - Touch: resistive, XPT2046 controller
 
 ### GPIO
@@ -116,6 +118,7 @@ tools/
   gen_fonts.py         Roboto (C:/Windows/Fonts, Apache 2.0) -> VLW smooth fonts
   gen_icons.py         weather icons drawn with Pillow -> RGB565 + alpha arrays
   preview_screen.py    PC previews of all screens with sample data (Pillow)
+  make_test_chart.py   320x240 JPEG colour bars + grey ramp for /photos (colour / gamma check)
 ```
 
 Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `weather.update()` →

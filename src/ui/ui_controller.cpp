@@ -6,6 +6,11 @@
 namespace {
 constexpr uint8_t kIliGammaSet = 0x26;  // ILI9341 "Gamma Set" command
 constexpr uint8_t kGammaCurve1 = 0x01, kGammaCurve2 = 0x02;
+constexpr uint8_t kIliPositiveGamma = 0xE0, kIliNegativeGamma = 0xE1;
+constexpr uint8_t kStandardPositiveGamma[] = {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1,
+                                              0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00};
+constexpr uint8_t kStandardNegativeGamma[] = {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1,
+                                              0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F};
 constexpr uint8_t kIliFrameRate = 0xB1;  // FRMCTR1: DIVA, RTNA
 constexpr uint8_t kFrameRateDivA = 0x00;  // fosc / 1
 
@@ -36,13 +41,22 @@ UiController::UiController(TFT_eSPI& tft)
 void UiController::begin(const Settings& settings) {
   tft_.setRotation(config::kScreenRotation);
   tft_.invertDisplay(config::kInvertDisplay);
-  if (config::kGammaFix) {
+  if (config::kPanelGamma == config::PanelGamma::Reselect) {
     // Switching curves and back reloads the gamma tables (setup only).
     tft_.writecommand(kIliGammaSet);
     tft_.writedata(kGammaCurve2);
     delay(config::kGammaFixSettleMs);
     tft_.writecommand(kIliGammaSet);
     tft_.writedata(kGammaCurve1);
+  } else if (config::kPanelGamma == config::PanelGamma::Standard) {
+    tft_.writecommand(kIliPositiveGamma);
+    for (uint8_t v : kStandardPositiveGamma) {
+      tft_.writedata(v);
+    }
+    tft_.writecommand(kIliNegativeGamma);
+    for (uint8_t v : kStandardNegativeGamma) {
+      tft_.writedata(v);
+    }
   }
   if (config::kPanelFrameRateRtna != 0) {
     tft_.writecommand(kIliFrameRate);
