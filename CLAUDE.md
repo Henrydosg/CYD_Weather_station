@@ -159,15 +159,16 @@ weather client (`setCities()` keeps data of cities still in the list).
 - Smooth fonts: always `ui::useFont(tft, kFontX)` (shared cache across screens), never
   `tft.loadFont` directly.
   Always pass a background colour to `setTextColor(fg, bg)` so glyph edges blend correctly.
-- Theme (user's choice since 2026-10-31, keep it): "ink night" navy, picked from four
-  palettes: near-black navy background (`kBackground` = rgb(2, 6, 22), also the card
-  fill) with bright navy outlines (`kCardBorder`), white values
-  (`kInk`), violet labels (`kLabel`), yellow time / highs (`kHighlight`, `kHigh`), cyan
-  lows (`kLow`), blue accent for buttons. Colours never follow weather or time of day.
+- Theme (user's choice since 2026-10-31, keep it): black dashboard like the classic CYD
+  weather screens (reference photo). Pure black background (`kBackground`, also the card
+  fill), white values (`kInk`), magenta labels (`kLabel`), cyan description / lows
+  (`kDescription`, `kLow`), yellow time / date / temperature / highs (`kHighlight`,
+  `kTemp`, `kHigh`), orange "feels like" (`kFeels`), dark graphite outlines, blue accent
+  for buttons. Colours never follow weather or time of day.
   Cards are outlined (`ui::drawCard`, no shadows); text and icons on them use
   `kBackground` as their background colour (the "today" column and keys use `kTrack`).
 - Icons (`gen_icons.py`): 72 px for the current weather and 30 px "...Small" for the
-  7-day strip and the graph; pastel colours that read well on navy.
+  7-day strip and the graph; pastel colours that read well on black.
 - UI preview on PC: `python tools/preview_screen.py --out <png> [--scale 2]
   [--screen main|setup|wifi]` with sample data and the colours read from `theme.h`.
   Keep it in sync with the screens when their layout changes.

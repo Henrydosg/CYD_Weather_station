@@ -174,7 +174,7 @@ void ScreenDashboard::drawHeader(const UiState& s) {
     snprintf(buf, sizeof(buf), "%s, %02d/%02d/%04d", weekdayShort(t.tm_wday), t.tm_mday,
              t.tm_mon + 1, t.tm_year + 1900);
     useFont(tft_, kFontTiny);
-    tft_.setTextColor(kMuted, kBackground);
+    tft_.setTextColor(kHighlight, kBackground);
     tft_.drawString(buf, kDateRightX, kDateMidY);
   }
 
@@ -230,7 +230,7 @@ void ScreenDashboard::drawCurrent(const CityWeather& w) {
 
   snprintf(buf, sizeof(buf), tr(Str::FeelsFmt), lroundf(w.apparentC));
   useFont(tft_, kFontTiny);
-  tft_.setTextColor(kMuted, kBackground);
+  tft_.setTextColor(kFeels, kBackground);
   tft_.drawString(buf, kTempMidX, kFeelsMidY);
 }
 

@@ -1,4 +1,4 @@
-"""Render PC previews of the UI screens ("ink night" navy theme).
+"""Render PC previews of the UI screens (black theme).
 
 Mirrors the layout constants of src/ui/screen_*.cpp with the same Roboto fonts
 and the icons from gen_icons.py, reads the colours from src/ui/theme.h and
@@ -164,7 +164,7 @@ def dashboard(city):
     d.text((8, 12), name, font=F["medium"], fill=C["Ink"], anchor="lm")
     d.text((8, 31), region, font=F["tiny"], fill=C["Muted"], anchor="lm")
     d.text((288, 12), w["time"], font=F["medium"], fill=C["Highlight"], anchor="rm")
-    d.text((312, 31), w["date"], font=F["tiny"], fill=C["Muted"], anchor="rm")
+    d.text((312, 31), w["date"], font=F["tiny"], fill=C["Highlight"], anchor="rm")
     bars(d, 294, 18, 3, C["Ok"])
     d.line((6, 40, 313, 40), fill=C["Line"])
     n = len(CITIES)
@@ -178,7 +178,7 @@ def dashboard(city):
     d.text((76, 54), w["desc"], font=F["medium"], fill=C["Description"], anchor="mm")
     paste(img, icon(w["icon"]), 2, 66)
     d.text((112, 98), f"{w['temp']}°", font=F["big"], fill=temp_color(w["temp"]), anchor="mm")
-    d.text((112, 130), f"Cảm giác {w['feels']}°", font=F["tiny"], fill=C["Muted"], anchor="mm")
+    d.text((112, 130), f"Cảm giác {w['feels']}°", font=F["tiny"], fill=C["Feels"], anchor="mm")
 
     values = w["rows"] + [f"{w['uv'][0]} {w['uv'][1]}", f"{w['aqi'][0]} {w['aqi'][1]}"]
     colors = [C["Ink"]] * 6 + [level_color(w["uv"][2]), level_color(w["aqi"][2])]
