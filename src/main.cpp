@@ -44,7 +44,13 @@ void loop() {
   }
   weather.update(now, wifi.isConnected());
 
-  UiState ui{wifi.state(), weather.status(), weather.version(), &weather.data(), false, {}};
+  UiState ui{};
+  ui.wifi = wifi.state();
+  ui.rssi = wifi.rssi();
+  ui.fetch = weather.status();
+  ui.dataVersion = weather.version();
+  ui.data = &weather.data();
+  ui.dataAgeMin = weather.hasData() ? (now - weather.lastSuccessMs()) / 60000UL : 0;
   ui.timeValid = timeSync.localTime(ui.localTime);
   screen.update(ui);
 }

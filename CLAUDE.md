@@ -27,7 +27,9 @@ request URL (it contains the key) to Serial, logs or docs.
 ## Board
 
 - MCU: ESP32-WROOM-32 (dual core 240 MHz, 4 MB flash, no PSRAM), `board = esp32dev`
-- Display: 2.8" ILI9341, 240x320, used in landscape (rotation 1, 320x240)
+- Display: 2.8" ILI9341, 240x320, used in landscape (rotation 1, 320x240). This
+  panel variant ("TPM408-2.8") needs display inversion: `config::kInvertDisplay = true`,
+  otherwise every colour shows as its negative.
 - Touch: resistive, XPT2046 controller
 
 ### GPIO
@@ -81,7 +83,7 @@ src/
   ui/screen_main       main screen: weather card, detail list, footer, date; redraws on change
   ui/analog_clock      analog clock + digital time, rendered in sprites once per second
   ui/icon              alpha-blended RGB565 icon drawing
-  ui/theme.h           shared UI colours
+  ui/theme             "dynamic sky" palettes per weather/day-night, skyAt(), blend()
   ui/touch_input       XPT2046 on VSPI, debounced tap detection
   ui/assets/           GENERATED - fonts.* and icons.* (do not edit by hand)
 tools/
@@ -101,6 +103,11 @@ Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `touch.tappe
   Missing glyphs are silently skipped. Only precomposed (NFC) Vietnamese is supported.
 - Smooth fonts: `tft.loadFont(kFontX)`; `ScreenMain::useFont()` caches the loaded font.
   Always pass a background colour to `setTextColor(fg, bg)` so glyph edges blend correctly.
+- Theme: the background is a vertical sky gradient chosen by `theme::paletteFor()`
+  (weather category + day/night). Paint any redrawn region with `theme::skyAt(palette, y)`
+  row by row (`ScreenMain::paintSky`, `AnalogClock::paintSky`) so it matches the rest of
+  the screen; cards are white at `kCardAlpha` over the sky. A palette change triggers a
+  full-screen redraw.
 - Partition table is `huge_app.csv` (3 MB app, no OTA) to fit the assets.
 - RAM: the clock uses two 16-bit sprites (136x136 and 138x30, ~45 KB heap). Avoid
   full-screen sprites (150 KB) - there is no PSRAM and TLS needs ~40 KB during a fetch.

@@ -73,6 +73,7 @@ void OpenWeatherMapClient::update(uint32_t now, bool networkUp) {
       ++version_;
       status_ = FetchStatus::Ok;
       nextDelayMs_ = config::kWeatherRefreshMs;
+      lastSuccess_ = millis();
     } else {
       status_ = FetchStatus::Error;
       nextDelayMs_ = config::kWeatherRetryMs;

@@ -50,7 +50,11 @@ void WifiManager::update(uint32_t now) {
     case WifiState::Connected:
       if (!linkUp) {
         Serial.println("[wifi] link lost, reconnecting");
+        rssi_ = 0;
         startConnect(now);
+      } else if (rssi_ == 0 || now - lastRssiSample_ >= config::kRssiSampleMs) {
+        rssi_ = static_cast<int8_t>(WiFi.RSSI());
+        lastRssiSample_ = now;
       }
       break;
 

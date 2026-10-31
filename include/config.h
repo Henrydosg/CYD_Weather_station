@@ -34,6 +34,7 @@ constexpr char kHostname[] = "cyd-weather";
 constexpr uint32_t kWifiConnectTimeoutMs = 15000;
 constexpr uint32_t kWifiRetryInitialMs = 5000;
 constexpr uint32_t kWifiRetryMaxMs = 60000;
+constexpr uint32_t kRssiSampleMs = 5000;  // signal strength refresh for the UI
 
 // ---------------------------------------------------------------------------
 // Time (SNTP)

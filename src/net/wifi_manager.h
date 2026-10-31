@@ -22,6 +22,8 @@ class WifiManager {
 
   WifiState state() const { return state_; }
   bool isConnected() const { return state_ == WifiState::Connected; }
+  // Last sampled signal strength in dBm (0 when not connected).
+  int8_t rssi() const { return rssi_; }
 
  private:
   void startConnect(uint32_t now);
@@ -32,4 +34,6 @@ class WifiManager {
   WifiState state_ = WifiState::Idle;
   uint32_t stateSince_ = 0;
   uint32_t retryDelayMs_;
+  int8_t rssi_ = 0;
+  uint32_t lastRssiSample_ = 0;
 };
