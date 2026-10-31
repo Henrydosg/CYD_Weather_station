@@ -1,0 +1,8 @@
+# PlatformIO build output
+.pio/
+
+# Editor / IDE
+.vscode/
+
+# Local credentials (copy include/secrets.example.h)
+include/secrets.h
