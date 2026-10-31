@@ -57,6 +57,15 @@ constexpr uint32_t kWifiConnectTimeoutMs = 15000;
 constexpr uint32_t kWifiRetryInitialMs = 5000;
 constexpr uint32_t kWifiRetryMaxMs = 60000;
 constexpr uint32_t kRssiSampleMs = 5000;  // signal strength refresh for the UI
+// A status of "auth failed" / "no AP" right after WiFi.begin() may be stale
+// from the previous attempt; it only counts after this grace period.
+constexpr uint32_t kWifiFailGraceMs = 1000;
+constexpr uint32_t kWifiScanTimeoutMs = 10000;  // async scan normally takes 2-4 s
+constexpr uint8_t kMaxScanResults = 12;         // strongest networks kept from a scan
+constexpr uint8_t kMaxSavedNetworks = 5;        // in NVS, most recently used first
+constexpr uint8_t kMaxSsidLen = 32;             // 802.11 limit
+constexpr uint8_t kMaxPasswordLen = 63;         // WPA2 passphrase limit
+constexpr uint32_t kWifiDoneMessageMs = 1500;   // "Connected" shown before the main screen
 
 // ---------------------------------------------------------------------------
 // Time (SNTP)

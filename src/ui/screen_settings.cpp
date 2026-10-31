@@ -16,10 +16,8 @@ constexpr int16_t kRowW = 320 - 2 * kMargin;
 constexpr int16_t kTextX = kRowX + 12;
 constexpr int16_t kTextRightX = kRowX + kRowW - 12;
 
-constexpr int16_t kHeaderMidY = 18;
-constexpr int16_t kBackChevronX = 14;
-constexpr int16_t kTitleX = 26;
-constexpr int16_t kBackHitW = 150, kBackHitH = 40;
+constexpr int16_t kTitleMaxW = 280;
+constexpr int16_t kChevronSpace = 14;  // right-aligned texts stop before the chevron
 
 constexpr int16_t kLangY = 44, kLangH = 48;
 constexpr int16_t kSegW = 80, kSegH = 30, kSegGap = 4;
@@ -37,12 +35,7 @@ constexpr int16_t kWifiLine1 = kWifiY + 18, kWifiLine2 = kWifiY + 42;
 void ScreenSettings::show(const UiState& state) {
   tft_.fillScreen(kBackground);
 
-  // Header: "< Settings"
-  ui::drawChevron(tft_, kBackChevronX, kHeaderMidY, false, kInk, kBackground);
-  useFont(tft_, kFontMedium);
-  tft_.setTextColor(kInk, kBackground);
-  tft_.setTextDatum(ML_DATUM);
-  tft_.drawString(tr(Str::Settings), kTitleX, kHeaderMidY);
+  ui::drawBackHeader(tft_, tr(Str::Settings), kTitleMaxW);
 
   drawLanguageRow();
 
@@ -57,7 +50,7 @@ void ScreenSettings::show(const UiState& state) {
 }
 
 void ScreenSettings::update(const UiState& state) {
-  if (state.wifi != lastWifi_) {
+  if (state.wifi != lastWifi_ || strcmp(state.ssid, lastSsid_) != 0) {
     drawWifiRow(state);
   }
 }
@@ -94,14 +87,16 @@ void ScreenSettings::drawLanguageRow() {
 
 void ScreenSettings::drawWifiRow(const UiState& state) {
   lastWifi_ = state.wifi;
+  strlcpy(lastSsid_, state.ssid, sizeof(lastSsid_));
   ui::drawCard(tft_, kRowX, kWifiY, kRowW, kWifiH);
   useFont(tft_, kFontSmall);
 
   tft_.setTextColor(kInk, kBackground);
   tft_.setTextDatum(ML_DATUM);
   tft_.drawString(tr(Str::Network), kTextX, kWifiLine1);
+  ui::drawChevron(tft_, kTextRightX, kWifiY + kWifiH / 2, true, kMuted, kBackground);
   tft_.setTextDatum(MR_DATUM);
-  tft_.drawString(state.ssid, kTextRightX, kWifiLine1);
+  tft_.drawString(state.ssid, kTextRightX - kChevronSpace, kWifiLine1);
 
   const bool up = state.wifi == WifiState::Connected;
   tft_.setTextColor(up ? kOk : kMuted, kBackground);
@@ -111,11 +106,11 @@ void ScreenSettings::drawWifiRow(const UiState& state) {
   } else {
     strlcpy(line, tr(Str::NotConnected), sizeof(line));
   }
-  tft_.drawString(line, kTextRightX, kWifiLine2);
+  tft_.drawString(line, kTextRightX - kChevronSpace, kWifiLine2);
 }
 
 SettingsTarget ScreenSettings::hitTest(int16_t x, int16_t y) const {
-  if (ui::hit(x, y, 0, 0, kBackHitW, kBackHitH)) {
+  if (ui::hit(x, y, 0, 0, ui::kBackHitW, ui::kBackHitH)) {
     return SettingsTarget::Back;
   }
   if (ui::hit(x, y, kSegViX, kLangY, kSegW + kSegGap / 2, kLangH)) {
@@ -126,6 +121,9 @@ SettingsTarget ScreenSettings::hitTest(int16_t x, int16_t y) const {
   }
   if (ui::hit(x, y, kRowX, kCalY, kRowW, kCalH)) {
     return SettingsTarget::Calibrate;
+  }
+  if (ui::hit(x, y, kRowX, kWifiY, kRowW, kWifiH)) {
+    return SettingsTarget::Wifi;
   }
   return SettingsTarget::None;
 }

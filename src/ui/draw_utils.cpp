@@ -1,5 +1,7 @@
 #include "draw_utils.h"
 
+#include "assets/fonts.h"
+
 namespace ui {
 
 namespace {
@@ -46,6 +48,56 @@ void drawCardBody(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
 void drawCard(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
   drawShadow(tft, x, y, w, h);
   drawCardBody(tft, x, y, w, h);
+}
+
+namespace {
+
+// Remove the last UTF-8 character from `s` (in place).
+void popUtf8Char(char* s) {
+  size_t len = strlen(s);
+  while (len > 0) {
+    const unsigned char c = static_cast<unsigned char>(s[--len]);
+    s[len] = '\0';
+    if ((c & 0xC0) != 0x80) {  // reached the lead byte
+      break;
+    }
+  }
+}
+
+constexpr size_t kFitBufLen = 72;  // longest fitted text: weather description
+constexpr int16_t kBackChevronX = 14;
+constexpr int16_t kTitleX = 26;
+
+}  // namespace
+
+void drawFitted(TFT_eSPI& tft, const char* text, int16_t x, int16_t y, int16_t maxWidth,
+                const uint8_t* large, const uint8_t* small) {
+  useFont(tft, large);
+  if (tft.textWidth(text) > maxWidth) {
+    useFont(tft, small);
+  }
+  char buf[kFitBufLen];
+  strlcpy(buf, text, sizeof(buf));
+  if (tft.textWidth(buf) > maxWidth) {
+    // Still too long: trim characters and append "..".
+    do {
+      popUtf8Char(buf);
+      char probe[sizeof(buf)];
+      snprintf(probe, sizeof(probe), "%s..", buf);
+      if (tft.textWidth(probe) <= maxWidth || buf[0] == '\0') {
+        strlcpy(buf, probe, sizeof(buf));
+        break;
+      }
+    } while (true);
+  }
+  tft.drawString(buf, x, y);
+}
+
+void drawBackHeader(TFT_eSPI& tft, const char* title, int16_t maxWidth) {
+  drawChevron(tft, kBackChevronX, kHeaderMidY, false, theme::kInk, theme::kBackground);
+  tft.setTextColor(theme::kInk, theme::kBackground);
+  tft.setTextDatum(ML_DATUM);
+  drawFitted(tft, title, kTitleX, kHeaderMidY, maxWidth, kFontMedium, kFontSmall);
 }
 
 void drawChevron(TFT_eSPI& tft, int16_t cx, int16_t cy, bool pointRight, uint16_t color,

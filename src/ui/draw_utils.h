@@ -33,6 +33,17 @@ void drawCardBody(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h);
 void drawChevron(TFT_eSPI& tft, int16_t cx, int16_t cy, bool pointRight, uint16_t color,
                  uint16_t bg);
 
+// Sub-screen header "< title" on a white background. The back target is
+// (0, 0, kBackHitW, kBackHitH). A title too wide for maxWidth uses the small font.
+constexpr int16_t kHeaderMidY = 18;
+constexpr int16_t kBackHitW = 150, kBackHitH = 40;
+void drawBackHeader(TFT_eSPI& tft, const char* title, int16_t maxWidth);
+
+// Draws text with the current colour and datum: `large` font if it fits in
+// maxWidth, else `small`, else trimmed with "..". Respects UTF-8.
+void drawFitted(TFT_eSPI& tft, const char* text, int16_t x, int16_t y, int16_t maxWidth,
+                const uint8_t* large, const uint8_t* small);
+
 // Simple rectangle hit test.
 inline bool hit(int16_t px, int16_t py, int16_t x, int16_t y, int16_t w, int16_t h) {
   return px >= x && px < x + w && py >= y && py < y + h;

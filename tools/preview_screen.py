@@ -205,12 +205,184 @@ def render(c, icons, fonts, lang, state):
     return img
 
 
+# ---------------------------------------------------------------------------
+# WiFi screens (screen_wifi.cpp, screen_keyboard.cpp, screen_connect.cpp)
+# ---------------------------------------------------------------------------
+
+WIFI_TEXT = {
+    "vi": dict(title="WiFi", rescan="Quét lại", connected="Đã kết nối: {}", saved="Đã lưu",
+               prev="Trước", next="Sau", space="dấu cách", cancel="Huỷ", connect="Kết nối",
+               show="Hiện", failed=("Sai mật khẩu hoặc", "không kết nối được"),
+               retry="Nhập lại", forget="Quên mạng"),
+    "en": dict(title="WiFi", rescan="Rescan", connected="Connected: {}", saved="Saved",
+               prev="Prev", next="Next", space="space", cancel="Cancel", connect="Connect",
+               show="Show", failed=("Wrong password or", "network unreachable"),
+               retry="Try again", forget="Forget"),
+}
+# (ssid, rssi, secured, saved, connected)
+NETWORKS = [("NhaRieng", -50, True, True, True), ("Cafe_Sua_Da", -62, False, True, False),
+            ("VNPT-5G-A1B2", -68, True, False, False), ("Viettel_Home", -80, True, False, False)]
+KEY_BG = (236, 243, 252)
+
+
+def chevron(d, cx, cy, right, color):
+    s = 1 if right else -1
+    d.line((cx - s * 2, cy - 5, cx + s * 2, cy, cx - s * 2, cy + 5), fill=color, width=2)
+
+
+def back_header(img, c, fonts, title):
+    d = ImageDraw.Draw(img)
+    chevron(d, 14, 18, False, c["Ink"])
+    d.text((26, 18), title, font=fonts["medium"], fill=c["Ink"], anchor="lm")
+
+
+def quantise(img):
+    px = img.load()
+    for y in range(H):
+        for x in range(W):
+            px[x, y] = q565(px[x, y])
+    return img
+
+
+def render_wifi(c, fonts, lang):
+    t = WIFI_TEXT[lang]
+    img = Image.new("RGB", (W, H), c["Background"])
+    back_header(img, c, fonts, t["title"])
+    rx = 320 - 8 - 92
+    rrect(img, (rx, 4, rx + 91, 31), 14, c["Accent"])
+    rrect(img, (rx + 1, 5, rx + 90, 30), 13, c["Background"])
+    d = ImageDraw.Draw(img)
+    d.text((rx + 46, 18), t["rescan"], font=fonts["small"], fill=c["Accent"], anchor="mm")
+    d.text((10, 46), t["connected"].format("NhaRieng - 192.168.1.23"), font=fonts["small"],
+           fill=c["Ok"], anchor="lm")
+
+    top0 = 60
+    shadow(img, c, 6, top0, 308, 144)
+    card(img, c, 6, top0, 308, 144)
+    d = ImageDraw.Draw(img)
+    for i, (ssid, rssi, secured, saved, connected) in enumerate(NETWORKS):
+        top, mid = top0 + i * 36, top0 + i * 36 + 18
+        if i > 0:
+            d.line((16, top, 303, top), fill=c["Line"])
+        lit = 1 + sum(rssi >= lvl for lvl in (-75, -65, -55))
+        for b in range(4):
+            h = 4 + b * 3
+            d.rectangle((18 + b * 5, mid + 7 - h, 20 + b * 5, mid + 6),
+                        fill=c["Accent"] if b < lit else c["BarOff"])
+        d.text((46, mid), ssid, font=fonts["medium"], fill=c["Ink"], anchor="lm")
+        if saved and not connected:
+            d.text((302, mid), t["saved"], font=fonts["small"], fill=c["Muted"], anchor="rm")
+            continue
+        if secured:
+            d.rounded_rectangle((262, mid - 2, 272, mid + 5), 2, fill=c["Muted"])
+            d.arc((263, mid - 7, 271, mid + 1), 180, 360, fill=c["Muted"], width=2)
+        if connected:
+            d.line((285, mid, 289, mid + 4, 296, mid - 4), fill=c["Ok"], width=2)
+        else:
+            chevron(d, 294, mid, True, c["Muted"])
+
+    for x0, label, right in ((6, t["prev"], False), (214, t["next"], True)):
+        rrect(img, (x0, 210, x0 + 99, 237), 14, c["Track"])
+        d = ImageDraw.Draw(img)
+        fg = c["ClockMinor"] if not right else c["Ink"]  # first page: Prev disabled
+        d.text((x0 + 50, 224), label, font=fonts["small"], fill=fg, anchor="mm")
+        chevron(d, x0 + 84 if right else x0 + 16, 224, right, fg)
+    d.text((160, 224), "1 / 2", font=fonts["small"], fill=c["Muted"], anchor="mm")
+    return quantise(img)
+
+
+def render_keyboard(c, fonts, lang, layout):
+    t = WIFI_TEXT[lang]
+    img = Image.new("RGB", (W, H), c["Background"])
+    back_header(img, c, fonts, "VNPT-5G-A1B2")
+    rrect(img, (6, 34, 313, 67), 10, c["Accent"])
+    rrect(img, (7, 35, 312, 66), 9, c["Background"])
+    d = ImageDraw.Draw(img)
+    pw = "*********"
+    d.text((16, 51), pw, font=fonts["medium"], fill=c["Ink"], anchor="lm")
+    tw = d.textlength(pw, font=fonts["medium"])
+    d.rectangle((17 + tw, 41, 18 + tw, 60), fill=c["Accent"])
+    d.text((304, 51), t["show"], font=fonts["small"], fill=c["Accent"], anchor="rm")
+
+    kw, kh, gap, y0 = 29, 36, 3, 74
+    full = 10 * kw + 9 * gap
+    x0 = (W - full) // 2
+    wide = (full - 7 * (kw + gap) - gap) // 2
+    rows = (["1234567890", "@#$%&*-+()", "_!?/:;'\"."] if layout == "symbols"
+            else ["qwertyuiop", "asdfghjkl", "zxcvbnm"])
+    if layout == "upper":
+        rows = [r.upper() for r in rows]
+
+    def key(x, y, w, label, accent=False, font="medium"):
+        rrect(img, (x, y, x + w - 1, y + kh - 1), 6, c["Accent"] if accent else KEY_BG)
+        ImageDraw.Draw(img).text((x + w / 2, y + kh / 2), label, font=fonts[font],
+                                 fill=c["OnAccent"] if accent else c["Ink"], anchor="mm")
+
+    def shift_icon(x, w, y, color):
+        cx, cy = x + w / 2, y + kh / 2
+        ImageDraw.Draw(img).line((cx - 4, cy + 7, cx - 4, cy, cx - 8, cy, cx, cy - 8, cx + 8, cy,
+                                  cx + 4, cy, cx + 4, cy + 7, cx - 4, cy + 7), fill=color, width=2)
+
+    def backspace_icon(x, w, y, color):
+        cx, cy = x + w / 2, y + kh / 2
+        dd = ImageDraw.Draw(img)
+        dd.line((cx - 10, cy, cx - 4, cy - 7, cx + 10, cy - 7, cx + 10, cy + 7, cx - 4, cy + 7,
+                 cx - 10, cy), fill=color, width=2)
+        dd.line((cx - 1, cy - 3, cx + 5, cy + 3), fill=color, width=2)
+        dd.line((cx - 1, cy + 3, cx + 5, cy - 3), fill=color, width=2)
+
+    for r in range(2):
+        first = x0 + (10 - len(rows[r])) * (kw + gap) // 2
+        for i, ch in enumerate(rows[r]):
+            key(first + i * (kw + gap), y0 + r * (kh + gap), kw, ch)
+    y3 = y0 + 2 * (kh + gap)
+    if layout == "symbols":
+        first = x0
+    else:
+        first = x0 + wide + gap
+        key(x0, y3, wide, "", accent=layout == "upper")
+        shift_icon(x0, wide, y3, c["OnAccent"] if layout == "upper" else c["Ink"])
+    for i, ch in enumerate(rows[2]):
+        key(first + i * (kw + gap), y3, kw, ch)
+    bx = first + len(rows[2]) * (kw + gap)
+    key(bx, y3, x0 + full - bx, "")
+    backspace_icon(bx, x0 + full - bx, y3, c["Ink"])
+    y4 = y3 + kh + gap
+    key(x0, y4, wide, "abc" if layout == "symbols" else "123", font="small")
+    sx = x0 + wide + gap
+    key(sx, y4, 118, t["space"], font="small")
+    key(sx + 121, y4, 48, t["cancel"], font="small")
+    cx = sx + 121 + 51
+    key(cx, y4, x0 + full - cx, t["connect"], accent=True, font="small")
+    return quantise(img)
+
+
+def render_connect_failed(c, fonts, lang):
+    t = WIFI_TEXT[lang]
+    img = Image.new("RGB", (W, H), c["Background"])
+    back_header(img, c, fonts, "VNPT-5G-A1B2")
+    shadow(img, c, 30, 70, 260, 110)
+    card(img, c, 30, 70, 260, 110)
+    d = ImageDraw.Draw(img)
+    d.text((160, 98), t["failed"][0], font=fonts["small"], fill=c["Error"], anchor="mm")
+    d.text((160, 120), t["failed"][1], font=fonts["small"], fill=c["Error"], anchor="mm")
+    rrect(img, (50, 140, 153, 167), 14, c["Accent"])
+    rrect(img, (166, 140, 269, 167), 14, c["Accent"])
+    rrect(img, (167, 141, 268, 166), 13, c["Background"])
+    d = ImageDraw.Draw(img)
+    d.text((102, 154), t["retry"], font=fonts["small"], fill=c["OnAccent"], anchor="mm")
+    d.text((218, 154), t["forget"], font=fonts["small"], fill=c["Accent"], anchor="mm")
+    return quantise(img)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", required=True, help="PNG sheet to write")
     parser.add_argument("--scale", type=int, default=2, help="pixel scale (nearest neighbour)")
     parser.add_argument("--lang", choices=["vi", "en"], default="vi")
+    parser.add_argument("--screen", choices=["main", "wifi"], default="main",
+                        help="main: weather states; wifi: WiFi list, keyboard, connect error")
     args = parser.parse_args()
 
     icons = {n: gen_icons.render(f, gen_icons.BASE) for n, f in gen_icons.WEATHER_ICONS}
@@ -224,12 +396,19 @@ def main():
     }
     colours = load_colours()
 
+    if args.screen == "wifi":
+        images = [render_wifi(colours, fonts, args.lang)]
+        images += [render_keyboard(colours, fonts, args.lang, lay)
+                   for lay in ("lower", "upper", "symbols")]
+        images.append(render_connect_failed(colours, fonts, args.lang))
+    else:
+        images = [render(colours, icons, fonts, args.lang, st) for st in STATES]
+
     cols, sc, pad = 3, args.scale, 12
-    rows = math.ceil(len(STATES) / cols)
+    rows = math.ceil(len(images) / cols)
     sheet = Image.new("RGB", (cols * (W * sc + pad) + pad, rows * (H * sc + pad) + pad),
                       (40, 40, 40))
-    for i, state in enumerate(STATES):
-        img = render(colours, icons, fonts, args.lang, state)
+    for i, img in enumerate(images):
         x, y = pad + (i % cols) * (W * sc + pad), pad + (i // cols) * (H * sc + pad)
         sheet.paste(img.resize((W * sc, H * sc), Image.NEAREST), (x, y))
     sheet.save(args.out)

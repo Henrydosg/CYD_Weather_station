@@ -74,17 +74,22 @@ include/
   secrets.h            WiFi credentials + OpenWeatherMap API key (git-ignored)
 src/
   main.cpp             setup()/loop() only: creates modules and wires them together
-  net/wifi_manager     non-blocking STA state machine, reconnect with backoff 5 s to 60 s
+  net/wifi_manager     non-blocking STA: saved networks then secrets.h default, backoff 5-60 s,
+                       async scan, user-chosen connect (connectTo) with result for the UI
   net/time_sync        SNTP (UTC+7) started on each WiFi connect, local time for the clock
   weather/weather_data.h   provider-independent WeatherData / WeatherCategory / FetchStatus
   weather/openweathermap   HTTPS GET + filtered JSON parse -> WeatherData, refresh scheduling
   weather/owm_codes        OpenWeatherMap condition id -> WeatherCategory
   weather/owm_root_ca.h    USERTrust RSA root CA (valid to 2038-01-18) for TLS verification
-  settings/settings.h      Settings / Language / TouchCalibration (plain data)
+  settings/settings.h      Settings / Language / TouchCalibration / SavedNetworks (plain data)
+  settings/saved_networks  remember (most recent first, max 5) / forget / find a network
   settings/settings_store  load/save Settings in NVS (Preferences, namespace "cyd-weather")
   ui/ui_controller     owns the screens, routes taps, returns UiCommand to main.cpp
   ui/screen_main       main screen: weather card, detail list, footer, date; VI/EN pill + gear
-  ui/screen_settings   language selector, touch calibration entry, WiFi status
+  ui/screen_settings   language selector, touch calibration entry, WiFi row (opens WiFi screen)
+  ui/screen_wifi       scanned networks, 4 per page, signal/lock/saved/connected marks
+  ui/screen_keyboard   on-screen keyboard for the password (abc / ABC / 123 layouts)
+  ui/screen_connect    connecting / connected / failed (Try again, Forget)
   ui/screen_calibration  two-point touch calibration (runs automatically on first boot)
   ui/strings           all on-screen text, Vietnamese + English, via tr(Str::X)
   ui/draw_utils        shared helpers: useFont (font cache), drawCard, chevron
@@ -112,6 +117,12 @@ saved) applied by `main.cpp`, which also persists settings.
   Touch targets should be at least ~36 px (resistive panel).
 - Settings live in NVS and survive firmware uploads; erasing flash resets them (and
   re-triggers calibration).
+- WiFi: Settings -> WiFi row opens the scan list. Open or saved networks connect on tap,
+  others ask for the password on the keyboard. A successful connect saves the network
+  (NVS key "nets", max 5, most recent first; passwords in plain text, never logged). At
+  boot the saved networks are tried in order, then `secrets.h`. The UI only sends
+  `UiAction::ScanWifi / ConnectWifi / ForgetWifi`; `main.cpp` drives `WifiManager` and
+  saves on `ConnectAttempt::Succeeded`.
 - Language: `ui/strings.cpp` has one Vietnamese and one English entry per `Str` id, in
   enum order. Never hard-code UI text in screens. Changing language re-requests the
   weather with `lang=vi|en`.
@@ -136,9 +147,10 @@ saved) applied by `main.cpp`, which also persists settings.
   this with a clipping viewport). Text and icons use `kBackground` as their background colour.
 - Icons in `gen_icons.py` are coloured for the white background (pastel blue clouds,
   gold moon, navy gear); check the contrast on white when adding one.
-- UI preview on PC: `python tools/preview_screen.py --out <png> [--scale 2] [--lang en]`
-  renders the main screen for several weather states with the colours read from
-  `theme.h`. Keep it in sync with `screen_main.cpp` when the layout changes.
+- UI preview on PC: `python tools/preview_screen.py --out <png> [--scale 2] [--lang en]
+  [--screen main|wifi]` renders the main screen for several weather states, or the WiFi
+  list / keyboard / connect error, with the colours read from `theme.h`. Keep it in sync
+  with the screens when their layout changes.
 - Partition table is `huge_app.csv` (3 MB app, no OTA) to fit the assets.
 - RAM: the clock uses two 16-bit sprites (136x136 and 120x28, ~44 KB heap). Avoid
   full-screen sprites (150 KB) - there is no PSRAM and TLS needs ~40 KB during a fetch.

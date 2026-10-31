@@ -9,6 +9,7 @@ namespace {
 
 constexpr char kKeyLanguage[] = "lang";
 constexpr char kKeyTouchCal[] = "tcal";
+constexpr char kKeyNetworks[] = "nets";
 constexpr bool kReadOnly = true;
 
 Settings defaults() {
@@ -38,10 +39,17 @@ Settings SettingsStore::load() {
     s.touch = cal;
     s.touchCalibrated = true;
   }
+  SavedNetworks nets{};
+  if (prefs.getBytes(kKeyNetworks, &nets, sizeof(nets)) == sizeof(nets) &&
+      nets.count <= config::kMaxSavedNetworks) {
+    s.networks = nets;
+  }
   prefs.end();
 
-  Serial.printf("[settings] language %s, touch %s\n", languageCode(s.language),
-                s.touchCalibrated ? "calibrated" : "default");
+  // Network count only; passwords are never logged.
+  Serial.printf("[settings] language %s, touch %s, %u saved network(s)\n",
+                languageCode(s.language), s.touchCalibrated ? "calibrated" : "default",
+                s.networks.count);
   return s;
 }
 
@@ -55,6 +63,7 @@ void SettingsStore::save(const Settings& s) {
   if (s.touchCalibrated) {
     prefs.putBytes(kKeyTouchCal, &s.touch, sizeof(s.touch));
   }
+  prefs.putBytes(kKeyNetworks, &s.networks, sizeof(s.networks));
   prefs.end();
   Serial.println("[settings] saved");
 }

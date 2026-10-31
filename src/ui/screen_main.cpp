@@ -110,18 +110,6 @@ uint8_t signalBars(WifiState wifi, int8_t rssi) {
   return bars;
 }
 
-// Remove the last UTF-8 character from `s` (in place).
-void popUtf8Char(char* s) {
-  size_t len = strlen(s);
-  while (len > 0) {
-    const unsigned char c = static_cast<unsigned char>(s[--len]);
-    s[len] = '\0';
-    if ((c & 0xC0) != 0x80) {  // reached the lead byte
-      break;
-    }
-  }
-}
-
 }  // namespace
 
 ScreenMain::ScreenMain(TFT_eSPI& tft)
@@ -216,28 +204,6 @@ void ScreenMain::drawHeader(WifiState wifi, uint8_t bars) {
   }
 }
 
-void ScreenMain::drawFitted(const char* text, int16_t x, int16_t y, int16_t maxWidth) {
-  useFont(tft_, kFontMedium);
-  if (tft_.textWidth(text) > maxWidth) {
-    useFont(tft_, kFontSmall);
-  }
-  char buf[sizeof(WeatherData::description) + 4];
-  strlcpy(buf, text, sizeof(buf));
-  if (tft_.textWidth(buf) > maxWidth) {
-    // Still too long: trim characters and append "..".
-    do {
-      popUtf8Char(buf);
-      char probe[sizeof(buf)];
-      snprintf(probe, sizeof(probe), "%s..", buf);
-      if (tft_.textWidth(probe) <= maxWidth || buf[0] == '\0') {
-        strlcpy(buf, probe, sizeof(buf));
-        break;
-      }
-    } while (true);
-  }
-  tft_.drawString(buf, x, y);
-}
-
 void ScreenMain::drawWeather(const WeatherData* d) {
   ui::drawCardBody(tft_, kMargin, kWeatherY, kLeftW, kWeatherH);
 
@@ -263,7 +229,7 @@ void ScreenMain::drawWeather(const WeatherData* d) {
 
   tft_.setTextColor(kAccent, kBackground);
   tft_.setTextDatum(ML_DATUM);
-  drawFitted(d->description, kDescX, kDescMidY, kDescMaxW);
+  ui::drawFitted(tft_, d->description, kDescX, kDescMidY, kDescMaxW, kFontMedium, kFontSmall);
 }
 
 void ScreenMain::drawDetails(const WeatherData* d) {

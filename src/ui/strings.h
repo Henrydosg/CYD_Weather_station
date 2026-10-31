@@ -27,6 +27,26 @@ enum class Str : uint8_t {
   CalTapTarget,
   CalSaved,
   CalRetry,
+  WifiRescan,
+  WifiScanning,
+  WifiScanFailed,
+  WifiNoNetworks,
+  WifiConnectedFmt,   // printf format, one %s (network name)
+  WifiConnectingFmt,  // printf format, one %s (network name)
+  WifiSaved,
+  WifiPrev,
+  WifiNext,
+  KeySpace,
+  KeyCancel,
+  KeyConnect,
+  KeyShow,
+  KeyHide,
+  WifiConnecting,
+  WifiConnectedOk,
+  WifiFailedLine1,
+  WifiFailedLine2,
+  WifiRetry,
+  WifiForget,
   Count,
 };
 

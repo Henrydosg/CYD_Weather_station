@@ -12,8 +12,13 @@
 struct UiState {
   WifiState wifi;
   int8_t rssi;              // dBm, 0 when not connected
-  const char* ssid;         // configured network name
+  const char* ssid;         // network connected or being connected to
   const char* ip;           // dotted IP, "" when not connected
+  ScanState scan;
+  uint32_t scanVersion;     // changes whenever scan state or results change
+  const WifiScanResults* scanResults;
+  const SavedNetworks* saved;
+  ConnectAttempt attempt;   // result of the last network chosen by the user
   FetchStatus fetch;
   uint32_t dataVersion;     // 0 = no data yet
   const WeatherData* data;  // valid when dataVersion > 0
@@ -46,7 +51,6 @@ class ScreenMain {
   void drawDetails(const WeatherData* data);
   void drawFooter(FetchStatus fetch, const WeatherData* data, uint32_t ageMin);
   void drawDate(const struct tm* t);
-  void drawFitted(const char* text, int16_t x, int16_t y, int16_t maxWidth);
 
   TFT_eSPI& tft_;
   AnalogClock clock_;

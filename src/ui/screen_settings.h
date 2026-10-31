@@ -1,4 +1,5 @@
-// Settings screen: language selector, touch calibration entry, WiFi status.
+// Settings screen: language selector, touch calibration entry, WiFi status
+// (tap it to pick a network).
 #pragma once
 
 #include <TFT_eSPI.h>
@@ -11,6 +12,7 @@ enum class SettingsTarget : uint8_t {
   Vietnamese,
   English,
   Calibrate,
+  Wifi,
 };
 
 class ScreenSettings {
@@ -30,4 +32,5 @@ class ScreenSettings {
 
   TFT_eSPI& tft_;
   WifiState lastWifi_ = WifiState::Idle;
+  char lastSsid_[config::kMaxSsidLen + 1] = "";
 };
