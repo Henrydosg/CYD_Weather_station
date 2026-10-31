@@ -12,6 +12,7 @@
 #include "settings/settings_store.h"
 #include "ui/touch_input.h"
 #include "ui/ui_controller.h"
+#include "weather/city_names.h"
 #include "weather/geocoding.h"
 #include "weather/open_meteo.h"
 
@@ -30,6 +31,7 @@ static WifiManager wifi(secrets::kWifiSsid, secrets::kWifiPassword);
 static TimeSync timeSync;
 static OpenMeteoClient weather;
 static GeocodingClient geocoder;
+static CityNameResolver cityNames;
 static uint32_t citiesVersion = 1;
 
 // Network the user asked for; remembered in NVS once the connect succeeds.
@@ -92,9 +94,12 @@ static void apply(const UiCommand& cmd, uint32_t now) {
     case UiAction::AddCity:
       if (cmd.index < geocoder.count()) {
         const GeoResult& r = geocoder.results()[cmd.index];
+        // Name in the search language; cityNames fetches the other one.
+        const uint8_t lang = static_cast<uint8_t>(settings.language);
         City city{};
-        strlcpy(city.name, r.name, sizeof(city.name));
-        strlcpy(city.region, r.region, sizeof(city.region));
+        city.geoId = r.id;
+        strlcpy(city.name[lang], r.name, sizeof(city.name[lang]));
+        strlcpy(city.region[lang], r.region, sizeof(city.region[lang]));
         city.latitude = r.latitude;
         city.longitude = r.longitude;
         if (addCity(settings.cities, city)) {
@@ -139,6 +144,13 @@ void loop() {
   timeSync.update(wifi.isConnected());
   weather.update(now, wifi.isConnected());
   geocoder.update(wifi.isConnected());
+  // Name lookups only when no weather fetch or search runs in this iteration.
+  const bool namesAllowed = wifi.isConnected() && weather.status() != FetchStatus::Fetching &&
+                            geocoder.status() != SearchStatus::Searching;
+  if (cityNames.update(now, namesAllowed, settings.cities)) {
+    ++citiesVersion;
+    store.save(settings);
+  }
   onConnectAttempt(wifi.attempt());
 
   UiState state{};

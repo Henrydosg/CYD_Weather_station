@@ -79,11 +79,12 @@ void ScreenCities::drawList(const UiState& s) {
     tft_.drawString(num, kIndexX, mid);
     tft_.setTextColor(kInk, kBackground);
     tft_.setTextDatum(ML_DATUM);
-    ui::drawFitted(tft_, c.name, kNameX, mid, kNameMaxW, kFontSmall, kFontTiny);
+    const Language lang = currentLanguage();
+    ui::drawFitted(tft_, cityName(c, lang), kNameX, mid, kNameMaxW, kFontSmall, kFontTiny);
     tft_.setTextColor(kMuted, kBackground);
     tft_.setTextDatum(MR_DATUM);
-    ui::drawFitted(tft_, countryOf(c.region), kCountryRightX, mid, kCountryMaxW, kFontTiny,
-                   kFontTiny);
+    ui::drawFitted(tft_, countryOf(cityRegion(c, lang)), kCountryRightX, mid, kCountryMaxW,
+                   kFontTiny, kFontTiny);
     ui::drawChevron(tft_, kChevronX, mid, true, kMuted, kBackground);
   }
 }
@@ -93,9 +94,12 @@ void ScreenCities::drawPanel(const UiState& s) {
   ui::drawCard(tft_, kPanelX, kPanelY, kPanelW, kPanelH);
   tft_.setTextDatum(MC_DATUM);
   tft_.setTextColor(kInk, kBackground);
-  ui::drawFitted(tft_, c.name, kW / 2, kPanelNameY, kPanelW - 20, kFontMedium, kFontSmall);
+  const Language lang = currentLanguage();
+  ui::drawFitted(tft_, cityName(c, lang), kW / 2, kPanelNameY, kPanelW - 20, kFontMedium,
+                 kFontSmall);
   tft_.setTextColor(kMuted, kBackground);
-  ui::drawFitted(tft_, c.region, kW / 2, kPanelRegionY, kPanelW - 20, kFontTiny, kFontTiny);
+  ui::drawFitted(tft_, cityRegion(c, lang), kW / 2, kPanelRegionY, kPanelW - 20, kFontTiny,
+                 kFontTiny);
 
   useFont(tft_, kFontSmall);
   const bool canUp = selected_ > 0;

@@ -3,7 +3,35 @@
 #include "settings.h"
 
 namespace {
+
 constexpr float kSameCityDeg = 0.01f;  // ~1 km: treat as the same place
+
+const char* pick(const char* wanted, const char* other) {
+  return wanted[0] != '\0' ? wanted : other;
+}
+
+}  // namespace
+
+const char* cityName(const City& city, Language lang) {
+  const uint8_t i = static_cast<uint8_t>(lang);
+  return pick(city.name[i], city.name[1 - i]);
+}
+
+const char* cityRegion(const City& city, Language lang) {
+  const uint8_t i = static_cast<uint8_t>(lang);
+  return pick(city.region[i], city.region[1 - i]);
+}
+
+bool cityNeedsNames(const City& city) {
+  if (city.geoId == kGeoIdNone) {
+    return false;
+  }
+  for (uint8_t i = 0; i < kLanguageCount; ++i) {
+    if (city.name[i][0] == '\0') {
+      return true;
+    }
+  }
+  return city.geoId == kGeoIdUnknown;
 }
 
 bool addCity(SavedCities& cities, const City& city) {

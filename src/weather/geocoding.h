@@ -2,9 +2,18 @@
 // on the update() after search(), so the UI can show "Searching..." first.
 #pragma once
 
+#include <ArduinoJson.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "weather_data.h"
+
+// Name and "admin1, country" region of one Open-Meteo geocoding place, cleaned
+// up for the fonts: "Ð" -> "Đ", no "(...)" parts, "Thành phố X" -> "TP. X".
+void readPlace(JsonObjectConst place, char* name, size_t nameSize, char* region,
+               size_t regionSize);
+// Search URL for `query` (percent-encoded); false when it does not fit.
+bool buildSearchUrl(char* url, int size, const char* query, uint8_t count, const char* langCode);
 
 class GeocodingClient {
  public:

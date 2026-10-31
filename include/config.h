@@ -18,6 +18,10 @@ constexpr bool kInvertDisplay = true;
 // suggested for washed-out CYD panels. Try true and compare on the board.
 constexpr bool kGammaFix = false;
 constexpr uint32_t kGammaFixSettleMs = 120;  // once, during setup()
+// ILI9341 frame rate (FRMCTR1 "RTNA" clocks per line): 0x1A ~73 Hz (the
+// ILI9341_2_DRIVER init), 0x13 ~100 Hz, 0x10 ~119 Hz. A higher refresh rate
+// hides the slow "rolling" shimmer of these TN panels. 0 keeps the init value.
+constexpr uint8_t kPanelFrameRateRtna = 0x13;
 constexpr int16_t kScreenWidth = 320;
 constexpr int16_t kScreenHeight = 240;
 
@@ -84,8 +88,12 @@ constexpr uint8_t kMaxCities = 8;
 constexpr uint8_t kMaxCityNameLen = 47;    // UTF-8 bytes
 constexpr uint8_t kMaxCityRegionLen = 47;  // "admin1, country"
 // Used until the user has saved any city. UTF-8; glyphs must exist in gen_fonts.py.
-constexpr char kDefaultCityName[] = "TP. Hồ Chí Minh";
-constexpr char kDefaultCityRegion[] = "Việt Nam";
+// Names per UI language (Vietnamese, English); id = GeoNames id of the place.
+constexpr char kDefaultCityNameVi[] = "TP. Hồ Chí Minh";
+constexpr char kDefaultCityNameEn[] = "Ho Chi Minh City";
+constexpr char kDefaultCityRegionVi[] = "Việt Nam";
+constexpr char kDefaultCityRegionEn[] = "Vietnam";
+constexpr uint32_t kDefaultCityGeoId = 1566083;
 constexpr float kDefaultCityLat = 10.82f;
 constexpr float kDefaultCityLon = 106.63f;
 // Seconds each city stays on the main screen; Settings cycles through these.
@@ -99,6 +107,15 @@ constexpr uint32_t kRotatePauseMs = 60000;  // after a tap, rotation waits this 
 constexpr char kForecastUrl[] = "https://api.open-meteo.com/v1/forecast";
 constexpr char kAirQualityUrl[] = "https://air-quality-api.open-meteo.com/v1/air-quality";
 constexpr char kGeocodingUrl[] = "https://geocoding-api.open-meteo.com/v1/search";
+// One place by GeoNames id, used to fetch a saved city's name in the other language.
+constexpr char kGeocodingGetUrl[] = "https://geocoding-api.open-meteo.com/v1/get";
+// Saved cities missing a name in one language are looked up one request at a
+// time, kCityNameGapMs apart (each blocks the loop briefly); after a failed
+// request the lookup waits kCityNameRetryMs.
+constexpr uint32_t kCityNameGapMs = 3000;
+constexpr uint32_t kCityNameRetryMs = 60000;
+// Results searched to match an old (pre-id) saved city by its coordinates.
+constexpr uint8_t kGeoMatchResults = 10;
 constexpr uint8_t kForecastDays = 7;
 constexpr uint8_t kForecastHours = 24;
 constexpr uint8_t kHourlyStep = 3;  // the 24 h graph shows every 3rd hour

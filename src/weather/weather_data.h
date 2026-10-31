@@ -73,6 +73,7 @@ enum class FetchStatus : uint8_t {
 
 // City search (geocoding)
 struct GeoResult {
+  uint32_t id;  // GeoNames id
   char name[config::kMaxCityNameLen + 1];
   char region[config::kMaxCityRegionLen + 1];  // "admin1, country"
   float latitude;

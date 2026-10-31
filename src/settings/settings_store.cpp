@@ -11,9 +11,25 @@ namespace {
 constexpr char kKeyLanguage[] = "lang";
 constexpr char kKeyTouchCal[] = "tcal";
 constexpr char kKeyNetworks[] = "nets";
-constexpr char kKeyCities[] = "cities";
+constexpr char kKeyCities[] = "cities2";  // City with names in both languages
+constexpr char kKeyCitiesV1[] = "cities";  // older layout, one name per city
 constexpr char kKeyRotate[] = "rot";
 constexpr bool kReadOnly = true;
+
+constexpr uint8_t kVi = static_cast<uint8_t>(Language::Vietnamese);
+constexpr uint8_t kEn = static_cast<uint8_t>(Language::English);
+
+// Layout of kKeyCitiesV1 (name in the UI language of the moment it was added).
+struct CityV1 {
+  char name[config::kMaxCityNameLen + 1];
+  char region[config::kMaxCityRegionLen + 1];
+  float latitude;
+  float longitude;
+};
+struct SavedCitiesV1 {
+  uint8_t count;
+  CityV1 items[config::kMaxCities];
+};
 
 Settings defaults() {
   Settings s{};
@@ -23,8 +39,11 @@ Settings defaults() {
   s.touchCalibrated = false;
   s.cities.count = 1;
   City& home = s.cities.items[0];
-  strlcpy(home.name, config::kDefaultCityName, sizeof(home.name));
-  strlcpy(home.region, config::kDefaultCityRegion, sizeof(home.region));
+  home.geoId = config::kDefaultCityGeoId;
+  strlcpy(home.name[kVi], config::kDefaultCityNameVi, sizeof(home.name[kVi]));
+  strlcpy(home.name[kEn], config::kDefaultCityNameEn, sizeof(home.name[kEn]));
+  strlcpy(home.region[kVi], config::kDefaultCityRegionVi, sizeof(home.region[kVi]));
+  strlcpy(home.region[kEn], config::kDefaultCityRegionEn, sizeof(home.region[kEn]));
   home.latitude = config::kDefaultCityLat;
   home.longitude = config::kDefaultCityLon;
   s.rotateSec = config::kDefaultRotateSec;
@@ -38,6 +57,30 @@ bool validRotation(uint8_t sec) {
     }
   }
   return false;
+}
+
+// Old cities keep their one name in the language of the moment; the other
+// language (and the GeoNames id) are looked up once the network is up.
+bool loadCitiesV1(Preferences& prefs, Language lang, SavedCities& out) {
+  static SavedCitiesV1 old;  // static: keeps ~0.8 KB off the setup() stack
+  old = SavedCitiesV1{};
+  if (prefs.getBytes(kKeyCitiesV1, &old, sizeof(old)) != sizeof(old) || old.count < 1 ||
+      old.count > config::kMaxCities) {
+    return false;
+  }
+  const uint8_t l = static_cast<uint8_t>(lang);
+  out = SavedCities{};
+  out.count = old.count;
+  for (uint8_t i = 0; i < old.count; ++i) {
+    City& c = out.items[i];
+    c.geoId = kGeoIdUnknown;
+    strlcpy(c.name[l], old.items[i].name, sizeof(c.name[l]));
+    strlcpy(c.region[l], old.items[i].region, sizeof(c.region[l]));
+    c.latitude = old.items[i].latitude;
+    c.longitude = old.items[i].longitude;
+  }
+  Serial.printf("[settings] migrated %u city(ies) from the old layout\n", out.count);
+  return true;
 }
 
 }  // namespace
@@ -63,9 +106,12 @@ Settings SettingsStore::load() {
       nets.count <= config::kMaxSavedNetworks) {
     s.networks = nets;
   }
-  SavedCities cities{};
+  static SavedCities cities;  // static: keeps ~1.6 KB off the setup() stack
+  cities = SavedCities{};
   if (prefs.getBytes(kKeyCities, &cities, sizeof(cities)) == sizeof(cities) &&
       cities.count >= 1 && cities.count <= config::kMaxCities) {
+    s.cities = cities;
+  } else if (loadCitiesV1(prefs, s.language, cities)) {
     s.cities = cities;
   }
   const uint8_t rot = prefs.getUChar(kKeyRotate, config::kDefaultRotateSec);
@@ -91,6 +137,9 @@ void SettingsStore::save(const Settings& s) {
   }
   prefs.putBytes(kKeyNetworks, &s.networks, sizeof(s.networks));
   prefs.putBytes(kKeyCities, &s.cities, sizeof(s.cities));
+  if (prefs.isKey(kKeyCitiesV1)) {
+    prefs.remove(kKeyCitiesV1);  // migrated on load
+  }
   prefs.putUChar(kKeyRotate, s.rotateSec);
   prefs.end();
   Serial.println("[settings] saved");

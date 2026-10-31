@@ -6,6 +6,8 @@
 namespace {
 constexpr uint8_t kIliGammaSet = 0x26;  // ILI9341 "Gamma Set" command
 constexpr uint8_t kGammaCurve1 = 0x01, kGammaCurve2 = 0x02;
+constexpr uint8_t kIliFrameRate = 0xB1;  // FRMCTR1: DIVA, RTNA
+constexpr uint8_t kFrameRateDivA = 0x00;  // fosc / 1
 
 uint8_t nextRotation(uint8_t current) {
   constexpr size_t n = sizeof(config::kRotateChoicesSec);
@@ -40,6 +42,11 @@ void UiController::begin(const Settings& settings) {
     delay(config::kGammaFixSettleMs);
     tft_.writecommand(kIliGammaSet);
     tft_.writedata(kGammaCurve1);
+  }
+  if (config::kPanelFrameRateRtna != 0) {
+    tft_.writecommand(kIliFrameRate);
+    tft_.writedata(kFrameRateDivA);
+    tft_.writedata(config::kPanelFrameRateRtna);
   }
   setLanguage(settings.language);
 

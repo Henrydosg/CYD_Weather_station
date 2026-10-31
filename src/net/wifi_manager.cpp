@@ -21,6 +21,9 @@ WifiManager::WifiManager(const char* defaultSsid, const char* defaultPassword)
 void WifiManager::begin(uint32_t now) {
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(config::kHostname);
+  // Modem sleep wakes the radio ~10 times a second; the current pulses make
+  // the backlight (fed from the same 3.3 V rail) shimmer. Always powered here.
+  WiFi.setSleep(false);
   // Reconnects are driven by this class so the backoff stays predictable.
   WiFi.setAutoReconnect(false);
   selectCandidate(0);

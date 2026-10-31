@@ -1,4 +1,4 @@
-"""Render PC previews of the UI screens (navy theme).
+"""Render PC previews of the UI screens ("ink night" navy theme).
 
 Mirrors the layout constants of src/ui/screen_*.cpp with the same Roboto fonts
 and the icons from gen_icons.py, reads the colours from src/ui/theme.h and

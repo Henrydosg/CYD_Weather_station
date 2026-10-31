@@ -9,6 +9,7 @@ enum class Language : uint8_t {
   Vietnamese = 0,
   English = 1,
 };
+constexpr uint8_t kLanguageCount = 2;
 
 // Open-Meteo geocoding "language" parameter for a UI language.
 inline const char* languageCode(Language lang) {
@@ -43,13 +44,26 @@ bool forgetNetwork(SavedNetworks& nets, const char* ssid);
 // nullptr when not saved.
 const WifiCredential* findNetwork(const SavedNetworks& nets, const char* ssid);
 
-// City shown on the main screen (found with the geocoding search).
+// GeoNames id of a city that was saved before ids were stored (looked up by
+// name and coordinates), and of one the geocoder could not match at all.
+constexpr uint32_t kGeoIdUnknown = 0;
+constexpr uint32_t kGeoIdNone = 0xFFFFFFFF;
+
+// City shown on the main screen (found with the geocoding search). Names are
+// kept in both UI languages, indexed by Language; "" = not looked up yet.
 struct City {
-  char name[config::kMaxCityNameLen + 1];      // UTF-8, e.g. "Đà Lạt"
-  char region[config::kMaxCityRegionLen + 1];  // "admin1, country"
+  uint32_t geoId;
+  char name[kLanguageCount][config::kMaxCityNameLen + 1];      // UTF-8, e.g. "Đà Lạt"
+  char region[kLanguageCount][config::kMaxCityRegionLen + 1];  // "admin1, country"
   float latitude;
   float longitude;
 };
+
+// Name / region in `lang`, or in the other language while it is not known yet.
+const char* cityName(const City& city, Language lang);
+const char* cityRegion(const City& city, Language lang);
+// True while a name in one of the languages is still missing.
+bool cityNeedsNames(const City& city);
 
 struct SavedCities {
   uint8_t count;

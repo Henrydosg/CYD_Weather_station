@@ -77,8 +77,8 @@ void ScreenGraph::drawHeader(const UiState& s) {
   const bool hasCity = s.cities != nullptr && city_ < s.cities->count;
   tft_.setTextDatum(ML_DATUM);
   tft_.setTextColor(kInk, kBackground);
-  ui::drawFitted(tft_, hasCity ? s.cities->items[city_].name : "--", kNameX, kNameMidY,
-                 kNameMaxW, kFontMedium, kFontSmall);
+  ui::drawFitted(tft_, hasCity ? cityName(s.cities->items[city_], currentLanguage()) : "--",
+                 kNameX, kNameMidY, kNameMaxW, kFontMedium, kFontSmall);
   useFont(tft_, kFontTiny);
   tft_.setTextColor(kMuted, kBackground);
   tft_.drawString(tr(Str::Next24h), kNameX, kSubMidY);

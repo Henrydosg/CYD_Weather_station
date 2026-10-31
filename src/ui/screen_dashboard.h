@@ -23,6 +23,8 @@ class ScreenDashboard {
   uint8_t city() const { return city_; }
 
  private:
+  // Redraws the current city over the previous one; restarts its display time.
+  void redraw(const UiState& s, uint32_t now);
   void drawHeader(const UiState& s);
   void drawCurrent(const CityWeather& w);
   void drawDetails(const CityWeather& w);

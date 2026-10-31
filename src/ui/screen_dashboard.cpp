@@ -85,6 +85,13 @@ DashTarget ScreenDashboard::hitTest(int16_t, int16_t y) const {
 }
 
 void ScreenDashboard::show(const UiState& s, uint32_t now) {
+  tft_.fillScreen(kBackground);
+  redraw(s, now);
+}
+
+// Every part clears only its own area, so a city change or new data never
+// blanks the whole screen (no visible flash).
+void ScreenDashboard::redraw(const UiState& s, uint32_t now) {
   const uint8_t n = s.cities != nullptr ? s.cities->count : 0;
   if (city_ >= n) {
     city_ = 0;
@@ -95,16 +102,15 @@ void ScreenDashboard::show(const UiState& s, uint32_t now) {
   lastWifi_ = s.wifi;
   lastBars_ = s.wifi == WifiState::Connected ? ui::signalBars(s.rssi) : 0;
 
-  tft_.fillScreen(kBackground);
-  drawHeader(s);
   const CityWeather* w = current(s, city_);
   if (w == nullptr || !w->valid) {
     drawWaiting(s);
-    return;
+  } else {
+    drawCurrent(*w);
+    drawDetails(*w);
+    drawDays(*w);
   }
-  drawCurrent(*w);
-  drawDetails(*w);
-  drawDays(*w);
+  drawHeader(s);  // last: the position dots overlap the top of the body
 }
 
 void ScreenDashboard::update(const UiState& s, uint32_t now) {
@@ -120,7 +126,7 @@ void ScreenDashboard::update(const UiState& s, uint32_t now) {
     city_ = (city_ + 1) % n;
   }
   if (rotate || s.dataVersion != lastData_ || s.citiesVersion != lastCities_) {
-    show(s, now);
+    redraw(s, now);
     return;
   }
 
@@ -143,11 +149,12 @@ void ScreenDashboard::drawHeader(const UiState& s) {
 
   tft_.setTextDatum(ML_DATUM);
   tft_.setTextColor(kInk, kBackground);
-  ui::drawFitted(tft_, c != nullptr ? c->name : "--", kNameX, kNameMidY, kNameMaxW, kFontMedium,
-                 kFontSmall);
+  const Language lang = currentLanguage();
+  ui::drawFitted(tft_, c != nullptr ? cityName(*c, lang) : "--", kNameX, kNameMidY, kNameMaxW,
+                 kFontMedium, kFontSmall);
   tft_.setTextColor(kMuted, kBackground);
-  ui::drawFitted(tft_, c != nullptr ? c->region : "", kNameX, kRegionMidY, kRegionMaxW, kFontTiny,
-                 kFontTiny);
+  ui::drawFitted(tft_, c != nullptr ? cityRegion(*c, lang) : "", kNameX, kRegionMidY,
+                 kRegionMaxW, kFontTiny, kFontTiny);
 
   // City local time and date
   struct tm t;
@@ -197,6 +204,7 @@ void ScreenDashboard::drawHeader(const UiState& s) {
 }
 
 void ScreenDashboard::drawWaiting(const UiState& s) {
+  tft_.fillRect(0, kBodyY, kW, config::kScreenHeight - kBodyY, kBackground);
   useFont(tft_, kFontSmall);
   tft_.setTextColor(s.fetch == FetchStatus::Error ? kError : kMuted, kBackground);
   tft_.setTextDatum(MC_DATUM);

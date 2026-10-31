@@ -78,7 +78,9 @@ src/
   weather/weather_data.h   provider-independent CityWeather (current, 7 days, 8 x 3 h),
                            GeoResult, FetchStatus / SearchStatus, wmoCategory()
   weather/open_meteo       all cities in one forecast request + one air-quality request
-  weather/geocoding        city search (Open-Meteo Geocoding API), up to 5 results
+  weather/geocoding        city search (Open-Meteo Geocoding API), up to 5 results;
+                           readPlace() cleans names ("Ð"->"Đ", no "(...)", "Thành phố"->"TP.")
+  weather/city_names       fills each saved city's name in the other language (/v1/get by id)
   weather/https_json       HTTPS GET with CA check, filtered streaming JSON parse
   weather/wmo_codes        WMO weather code -> WeatherCategory (icon)
   weather/open_meteo_root_ca.h  ISRG Root X1 + X2 (Let's Encrypt) for *.open-meteo.com
@@ -125,8 +127,12 @@ weather client (`setCities()` keeps data of cities still in the list).
   pauses the rotation for `config::kRotatePauseMs`. Tap the graph to go back.
 - Cities: Settings -> Cities. "+ Add" opens the keyboard (type without accents), the
   geocoder returns up to 5 places (names in the UI language; "Ð/ð" is normalised to
-  "Đ/đ"), "+" adds one. Tap a city for Up / Down / Remove. Stored in NVS key "cities"
-  (max 8, never empty; default `config::kDefaultCity*`).
+  "Đ/đ"), "+" adds one. Tap a city for Up / Down / Remove. Stored in NVS key "cities2"
+  (max 8, never empty; default `config::kDefaultCity*`). Each `City` keeps its GeoNames
+  id and name / region in both languages (`cityName(city, lang)`): Vietnamese with
+  accents, English international names. `CityNameResolver` fetches the missing language
+  one request at a time (cities from the old "cities" key are matched by name and
+  coordinates first); until then the other language's name is shown.
 - Touch coordinates come from a linear raw→pixel map (`TouchCalibration`). Defaults are in
   `config.h`; on first boot (nothing in NVS) the calibration screen runs automatically.
   Touch targets should be at least ~36 px (resistive panel).
@@ -153,8 +159,9 @@ weather client (`setCities()` keeps data of cities still in the list).
 - Smooth fonts: always `ui::useFont(tft, kFontX)` (shared cache across screens), never
   `tft.loadFont` directly.
   Always pass a background colour to `setTextColor(fg, bg)` so glyph edges blend correctly.
-- Theme (user's choice since 2026-10-31, keep it): navy dashboard like the popular CYD
-  weather projects. Navy background (`kBackground`, also the card fill), white values
+- Theme (user's choice since 2026-10-31, keep it): "ink night" navy, picked from four
+  palettes: near-black navy background (`kBackground` = rgb(2, 6, 22), also the card
+  fill) with bright navy outlines (`kCardBorder`), white values
   (`kInk`), violet labels (`kLabel`), yellow time / highs (`kHighlight`, `kHigh`), cyan
   lows (`kLow`), blue accent for buttons. Colours never follow weather or time of day.
   Cards are outlined (`ui::drawCard`, no shadows); text and icons on them use
@@ -165,6 +172,9 @@ weather client (`setCities()` keeps data of cities still in the list).
   [--screen main|setup|wifi]` with sample data and the colours read from `theme.h`.
   Keep it in sync with the screens when their layout changes.
 - Partition table is `huge_app.csv` (3 MB app, no OTA) to fit the assets.
+- Flicker: the dashboard redraws region by region (no `fillScreen` on rotation or new
+  data); WiFi modem sleep is off (its current pulses made the backlight shimmer); panel
+  frame rate `config::kPanelFrameRateRtna` (~100 Hz); SPI 40 MHz.
 - RAM: no sprites. Avoid full-screen sprites (150 KB) - there is no PSRAM and TLS needs
   ~40 KB during a fetch; the parsed forecast of 8 cities needs ~20 KB of JSON heap.
 
