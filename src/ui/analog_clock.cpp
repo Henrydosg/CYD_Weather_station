@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "assets/fonts.h"
+#include "draw_utils.h"
 #include "theme.h"
 
 using namespace theme;
@@ -25,6 +26,8 @@ constexpr float kHourLen = 32, kHourTail = 0, kHourBase = 3.0f, kHourTip = 2.6f;
 constexpr float kMinLen = 48, kMinTail = 0, kMinBase = 2.0f, kMinTip = 1.6f;
 constexpr float kSecLen = 55, kSecTail = 12, kSecBase = 1.0f, kSecTip = 0.8f;
 constexpr int16_t kHubR = 4, kHubInnerR = 1;
+// Softer shadow than the cards: the face nearly fills its sprite.
+constexpr int16_t kFaceShadowSpread = 4, kFaceShadowOffsetY = 2;
 
 // Digital readout, inside the time card drawn by ScreenMain.
 constexpr int16_t kTextW = AnalogClock::kDigitalW;
@@ -83,9 +86,15 @@ void AnalogClock::drawHand(float angleDeg, float length, float tail, float baseR
 }
 
 void AnalogClock::drawFace(const struct tm* t) {
-  // White face with a thin accent ring.
+  // White face with a thin accent ring and a soft shadow (clipped by the sprite).
   face_.fillSprite(kBackground);
-  face_.fillSmoothCircle(kC, kC, kRadius, kAccent, kBackground);
+  uint16_t outside = kBackground;
+  for (int16_t i = kFaceShadowSpread; i >= 1; --i) {
+    const uint16_t c = ui::shadowColor(face_, i, kFaceShadowSpread);
+    face_.fillSmoothCircle(kC, kC + kFaceShadowOffsetY, kRadius + i, c, outside);
+    outside = c;
+  }
+  face_.fillSmoothCircle(kC, kC, kRadius, kAccent, outside);
   face_.fillSmoothCircle(kC, kC, kRadius - kRingWidth, kBackground, kAccent);
 
   for (int i = 0; i < 60; ++i) {

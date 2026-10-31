@@ -17,11 +17,35 @@ void useFont(TFT_eSPI& tft, const uint8_t* font) {
   }
 }
 
-void drawCard(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
+uint16_t shadowColor(TFT_eSPI& tft, int16_t ring, int16_t spread) {
+  // Quadratic fall-off: darkest next to the card, invisible at `spread`.
+  const int32_t k = spread + 1 - ring;
+  const int32_t alpha = kShadowAlpha * k * k / ((spread + 1) * (spread + 1));
+  return tft.alphaBlend(static_cast<uint8_t>(alpha), theme::kInk, theme::kBackground);
+}
+
+void drawShadow(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
+  // Rounded rings from the outside in, each one shade darker, shifted down.
+  uint16_t outside = theme::kBackground;
+  for (int16_t i = kShadowSpread; i >= 1; --i) {
+    const uint16_t c = shadowColor(tft, i, kShadowSpread);
+    tft.fillSmoothRoundRect(x - i, y + kShadowOffsetY - i, w + 2 * i, h + 2 * i, kCardRadius + i,
+                            c, outside);
+    outside = c;
+  }
+}
+
+void drawCardBody(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
   using namespace theme;
-  tft.fillSmoothRoundRect(x, y, w, h, kCardRadius, kCardBorder, kBackground);
+  tft.fillSmoothRoundRect(x, y, w, h, kCardRadius, kCardBorder,
+                          shadowColor(tft, 1, kShadowSpread));
   tft.fillSmoothRoundRect(x + kBorder, y + kBorder, w - 2 * kBorder, h - 2 * kBorder,
                           kCardRadius - kBorder, kBackground, kCardBorder);
+}
+
+void drawCard(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
+  drawShadow(tft, x, y, w, h);
+  drawCardBody(tft, x, y, w, h);
 }
 
 void drawChevron(TFT_eSPI& tft, int16_t cx, int16_t cy, bool pointRight, uint16_t color,

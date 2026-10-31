@@ -130,14 +130,17 @@ saved) applied by `main.cpp`, which also persists settings.
   also the card fill), ocean-blue text (`kInk`), one accent blue (`kAccent`) for the
   description, date, pill and clock ring, orange `kHighlight` only for the second hand.
   Colours never follow weather or time of day. Cards are white with a thin blue outline
-  (`ui::drawCard`). Text and icons use `kBackground` as their background colour.
+  and a soft navy drop shadow (`ui::drawCard` = `drawShadow` + `drawCardBody`). Shadows
+  spill ~9 px below a card: when cards are close, draw all shadows first, then the bodies,
+  and repaint the shadow part in a neighbouring region that gets cleared (the footer does
+  this with a clipping viewport). Text and icons use `kBackground` as their background colour.
 - Icons in `gen_icons.py` are coloured for the white background (pastel blue clouds,
   gold moon, navy gear); check the contrast on white when adding one.
 - UI preview on PC: `python tools/preview_screen.py --out <png> [--scale 2] [--lang en]`
   renders the main screen for several weather states with the colours read from
   `theme.h`. Keep it in sync with `screen_main.cpp` when the layout changes.
 - Partition table is `huge_app.csv` (3 MB app, no OTA) to fit the assets.
-- RAM: the clock uses two 16-bit sprites (136x136 and 112x28, ~43 KB heap). Avoid
+- RAM: the clock uses two 16-bit sprites (136x136 and 120x28, ~44 KB heap). Avoid
   full-screen sprites (150 KB) - there is no PSRAM and TLS needs ~40 KB during a fetch.
 
 ## Coding rules

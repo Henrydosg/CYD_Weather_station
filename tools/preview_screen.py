@@ -25,6 +25,9 @@ FONT_DIR = Path("C:/Windows/Fonts")
 W, H = 320, 240
 SUP = 4  # supersampling for anti-aliased shapes
 CARD_RADIUS = 10
+# ui::drawShadow (draw_utils.h) and the clock face shadow (analog_clock.cpp)
+SHADOW_SPREAD, SHADOW_OFFSET_Y, SHADOW_ALPHA = 6, 3, 36
+FACE_SHADOW_SPREAD, FACE_SHADOW_OFFSET_Y = 4, 2
 
 TEXT = {
     "vi": dict(city="TP. Hồ Chí Minh", feels="Cảm giác", hum="Độ ẩm", wind="Gió",
@@ -66,8 +69,21 @@ def rrect(img, box, r, fill):
     img.paste(Image.new("RGB", (w, h), fill), (x0, y0), m.resize((w, h), Image.LANCZOS))
 
 
+def shadow_color(c, ring, spread):
+    k = spread + 1 - ring
+    alpha = SHADOW_ALPHA * k * k // ((spread + 1) * (spread + 1))
+    return q565(tuple(round(b + (i - b) * alpha / 255) for i, b in zip(c["Ink"], c["Background"])))
+
+
+def shadow(img, c, x, y, w, h):
+    """ui::drawShadow: rings from the outside in, shifted down."""
+    for i in range(SHADOW_SPREAD, 0, -1):
+        rrect(img, (x - i, y + SHADOW_OFFSET_Y - i, x + w - 1 + i, y + SHADOW_OFFSET_Y + h - 1 + i),
+              CARD_RADIUS + i, shadow_color(c, i, SHADOW_SPREAD))
+
+
 def card(img, c, x, y, w, h):
-    """ui::drawCard: border-coloured rounded rect, background inset by 1 px."""
+    """ui::drawCardBody: border-coloured rounded rect, background inset by 1 px."""
     rrect(img, (x, y, x + w - 1, y + h - 1), CARD_RADIUS, c["CardBorder"])
     rrect(img, (x + 1, y + 1, x + w - 2, y + h - 2), CARD_RADIUS - 1, c["Background"])
 
@@ -82,6 +98,10 @@ def draw_clock(img, c, fonts, hh=10, mm=8, ss=30):
     n, cc = size * SUP, size * SUP / 2
     face = Image.new("RGB", (n, n), c["Background"])
     d = ImageDraw.Draw(face)
+    for i in range(FACE_SHADOW_SPREAD, 0, -1):
+        r, oy = (66 + i) * SUP, FACE_SHADOW_OFFSET_Y * SUP
+        d.ellipse((cc - r, cc + oy - r, cc + r, cc + oy + r),
+                  fill=shadow_color(c, i, FACE_SHADOW_SPREAD))
     d.ellipse((cc - 66 * SUP, cc - 66 * SUP, cc + 66 * SUP, cc + 66 * SUP), fill=c["Accent"])
     d.ellipse((cc - 64 * SUP, cc - 64 * SUP, cc + 64 * SUP, cc + 64 * SUP), fill=c["Background"])
     for i in range(60):
@@ -131,6 +151,11 @@ def render(c, icons, fonts, lang, state):
         h = 4 + i * 3
         d.rectangle((bars_x + i * 5, 20 - h, bars_x + i * 5 + 2, 19),
                     fill=c["Ok"] if i < 3 else c["BarOff"])
+
+    # Card shadows first (details, then weather), then the bodies
+    shadow(img, c, 6, 138, 166, 82)
+    shadow(img, c, 6, 30, 166, 104)
+    shadow(img, c, 180, 168, 132, 50)
 
     # Weather card
     card(img, c, 6, 30, 166, 104)
@@ -194,8 +219,8 @@ def main():
     fonts = {
         "small": ImageFont.truetype(str(FONT_DIR / "Roboto-Regular.ttf"), 15),
         "medium": ImageFont.truetype(str(FONT_DIR / "Roboto-Medium.ttf"), 20),
-        "temp": ImageFont.truetype(str(FONT_DIR / "Roboto-Medium.ttf"), 46),
-        "clock": ImageFont.truetype(str(FONT_DIR / "Roboto-Medium.ttf"), 26),
+        "temp": ImageFont.truetype(str(FONT_DIR / "Roboto-Medium.ttf"), 52),
+        "clock": ImageFont.truetype(str(FONT_DIR / "Roboto-Medium.ttf"), 28),
     }
     colours = load_colours()
 

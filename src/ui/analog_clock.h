@@ -9,7 +9,7 @@
 class AnalogClock {
  public:
   // Size of the digital readout below the face.
-  static constexpr int16_t kDigitalW = 112;
+  static constexpr int16_t kDigitalW = 120;
   static constexpr int16_t kDigitalH = 28;
 
   AnalogClock(TFT_eSPI& tft, int16_t faceX, int16_t faceY, int16_t textX, int16_t textY);

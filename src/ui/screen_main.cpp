@@ -46,7 +46,8 @@ constexpr int16_t kIconY = kWeatherY + 4;
 constexpr int16_t kIconSize = 72;
 constexpr int16_t kTempRightX = kMargin + kLeftW - 8;
 constexpr int16_t kTempMidY = kIconY + kIconSize / 2;
-constexpr int16_t kTempMaxW = kTempRightX - (kIconX + kIconSize + 2);
+// The icons have a transparent margin, so the digits may start right after them.
+constexpr int16_t kTempMaxW = kTempRightX - (kIconX + kIconSize);
 constexpr int16_t kDescX = kMargin + 8;
 constexpr int16_t kDescMidY = kWeatherY + kWeatherH - 14;
 constexpr int16_t kDescMaxW = kLeftW - 16;
@@ -159,15 +160,21 @@ void ScreenMain::update(const UiState& s) {
     lastBars_ = bars;
   }
   if (newData) {
+    // Both shadows before the bodies: each one spills into the gap and onto
+    // the neighbouring card.
+    ui::drawShadow(tft_, kMargin, kDetailsY, kLeftW, kDetailsH);
+    ui::drawShadow(tft_, kMargin, kWeatherY, kLeftW, kWeatherH);
     drawWeather(data);
     drawDetails(data);
   }
-  if (newData || s.fetch != last_.fetch || s.dataAgeMin != last_.dataAgeMin) {
-    drawFooter(s.fetch, data, s.dataAgeMin);
-  }
-  if (full || s.timeValid != last_.timeValid ||
-      (s.timeValid && s.localTime.tm_mday != last_.localTime.tm_mday)) {
+  const bool newDate = full || s.timeValid != last_.timeValid ||
+                       (s.timeValid && s.localTime.tm_mday != last_.localTime.tm_mday);
+  if (newDate) {
     drawDate(now);
+  }
+  // Last: the card shadows reach into the footer and are repainted there.
+  if (newData || newDate || s.fetch != last_.fetch || s.dataAgeMin != last_.dataAgeMin) {
+    drawFooter(s.fetch, data, s.dataAgeMin);
   }
   clock_.update(now);
 
@@ -232,7 +239,7 @@ void ScreenMain::drawFitted(const char* text, int16_t x, int16_t y, int16_t maxW
 }
 
 void ScreenMain::drawWeather(const WeatherData* d) {
-  ui::drawCard(tft_, kMargin, kWeatherY, kLeftW, kWeatherH);
+  ui::drawCardBody(tft_, kMargin, kWeatherY, kLeftW, kWeatherH);
 
   if (d == nullptr) {
     useFont(tft_, kFontSmall);
@@ -260,7 +267,7 @@ void ScreenMain::drawWeather(const WeatherData* d) {
 }
 
 void ScreenMain::drawDetails(const WeatherData* d) {
-  ui::drawCard(tft_, kMargin, kDetailsY, kLeftW, kDetailsH);
+  ui::drawCardBody(tft_, kMargin, kDetailsY, kLeftW, kDetailsH);
 
   char values[kRows][16];
   uint16_t valueColor[kRows] = {kInk, kInk, kInk, kInk};
@@ -310,7 +317,13 @@ void ScreenMain::drawDetails(const WeatherData* d) {
 }
 
 void ScreenMain::drawFooter(FetchStatus fetch, const WeatherData* d, uint32_t ageMin) {
-  tft_.fillRect(0, kFooterY, config::kScreenWidth, config::kScreenHeight - kFooterY, kBackground);
+  constexpr int16_t kFooterH = config::kScreenHeight - kFooterY;
+  tft_.fillRect(0, kFooterY, config::kScreenWidth, kFooterH, kBackground);
+  // Restore the bottom of the card shadows, clipped to the footer.
+  tft_.setViewport(0, kFooterY, config::kScreenWidth, kFooterH, false);
+  ui::drawShadow(tft_, kMargin, kDetailsY, kLeftW, kDetailsH);
+  ui::drawShadow(tft_, kTimeCardX, kTimeCardY, kTimeCardW, kTimeCardH);
+  tft_.resetViewport();
   useFont(tft_, kFontSmall);
 
   char buf[32];
