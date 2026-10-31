@@ -269,7 +269,7 @@ def photos_hint():
         d.text((cx, mid), label, font=F["small"], fill=C["Accent"], anchor="mm")
         half = d.textlength(label, font=F["small"]) / 2
         chevron(d, cx + (half + 10 if right else -half - 10), mid, right, C["Accent"])
-    d.text((160, mid), "Quay lại", font=F["small"], fill=C["Muted"], anchor="mm")
+    d.text((160, mid), "Về thời tiết", font=F["small"], fill=C["Muted"], anchor="mm")
     d.text((160, 218), "12 ảnh, tự chuyển sau 15 giây", font=F["tiny"], fill=C["Muted"],
            anchor="mm")
     return img
@@ -280,7 +280,7 @@ def photos_message():
     img, d = new_screen()
     d.text((160, 108), "Không có ảnh .jpg trong /photos", font=F["small"], fill=C["Error"],
            anchor="mm")
-    d.text((160, 136), "Quay lại", font=F["tiny"], fill=C["Muted"], anchor="mm")
+    d.text((160, 136), "Về thời tiết", font=F["tiny"], fill=C["Muted"], anchor="mm")
     return img
 
 

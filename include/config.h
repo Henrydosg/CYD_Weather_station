@@ -119,6 +119,9 @@ constexpr float kDefaultCityLon = 106.63f;
 constexpr uint8_t kRotateChoicesSec[] = {10, 20, 30, 60};
 constexpr uint8_t kDefaultRotateSec = 20;
 constexpr uint32_t kRotatePauseMs = 60000;  // after a tap, rotation waits this long
+// Settings, lists, keyboard and the graph go back to the main screen after
+// this long without a tap (the photo viewer stays: it is a photo frame).
+constexpr uint32_t kMenuIdleMs = 120000;
 
 // ---------------------------------------------------------------------------
 // Open-Meteo (free, no API key; non-commercial limit 10 000 calls per day)

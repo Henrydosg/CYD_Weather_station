@@ -6,3 +6,6 @@
 
 # Local credentials (copy include/secrets.example.h)
 include/secrets.h
+
+# PC previews and test charts (tools/preview_screen.py, tools/make_test_chart.py)
+previews/

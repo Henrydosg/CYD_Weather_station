@@ -1,6 +1,6 @@
 // Photo viewer: JPEG files from the SD card, full screen, slideshow.
 // Opens with a short hint of the tap zones: left third = previous, middle =
-// back, right third = next; top corners cycle the panel gamma (left) and the
+// back to the weather screen, right third = next; top corners cycle the panel gamma (left) and the
 // photo tone correction (right), saved in NVS by main.cpp. Decoding a photo blocks the loop briefly
 // (~0.3-0.5 s for 320 x 240), like an HTTP request.
 #pragma once

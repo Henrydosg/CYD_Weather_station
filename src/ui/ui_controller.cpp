@@ -73,6 +73,16 @@ void UiController::showWifi(const UiState& state, bool resetPage) {
 }
 
 UiCommand UiController::update(const UiState& state, const TouchEvent& touch, uint32_t now) {
+  if (touch.tapped) {
+    lastTapAt_ = now;
+  }
+  // Menus and the graph left alone return to the weather screen. The photo
+  // viewer (a photo frame) and the calibration stay until tapped.
+  const bool staysOpen = screen_ == Screen::Dashboard || screen_ == Screen::Photos ||
+                         screen_ == Screen::Calibration;
+  if (!staysOpen && now - lastTapAt_ >= config::kMenuIdleMs) {
+    showDashboard();
+  }
   switch (screen_) {
     case Screen::Dashboard:
       return updateDashboard(state, touch, now);
@@ -367,7 +377,7 @@ UiCommand UiController::updatePhotos(const UiState& state, const TouchEvent& tou
       break;
     }
     case PhotoTarget::Back:
-      showSettings(state);
+      showDashboard();  // straight back to the weather screen
       break;
     case PhotoTarget::Prev:
       photos_.step(state, -1);

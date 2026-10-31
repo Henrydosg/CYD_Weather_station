@@ -79,7 +79,7 @@ const Text kTexts[] = {
     {"Ảnh", "Photos"},
     {"Trước", "Previous"},
     {"Sau", "Next"},
-    {"Quay lại", "Back"},
+    {"Về thời tiết", "Weather"},
     {"%u ảnh, tự chuyển sau %lu giây", "%u photos, next every %lu s"},
     {"Đang đọc thẻ nhớ...", "Reading the SD card..."},
     {"Không thấy thẻ nhớ", "No SD card found"},

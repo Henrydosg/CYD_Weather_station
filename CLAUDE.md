@@ -70,6 +70,7 @@ time, `USER_SETUP_LOADED=1`). All other pins live in `include/config.h`.
 ## Layout
 
 ```
+README.md              user guide (Vietnamese): setup, screens, photos, troubleshooting
 include/
   config.h             all tunable constants (pins, cities, intervals, URLs, timeouts)
   secrets.example.h    credentials template (committed)
@@ -135,7 +136,9 @@ weather client (`setCities()` keeps data of cities still in the list).
 - Main (dashboard): shows one city and moves to the next every `rotateSec` (10/20/30/60 s,
   Settings). Header shows the city's local time (UTC + Open-Meteo `utc_offset_seconds`) and
   one dot per city. Tap the header for Settings, anywhere else for the 24 h graph; any tap
-  pauses the rotation for `config::kRotatePauseMs`. Tap the graph to go back.
+  pauses the rotation for `config::kRotatePauseMs`. Tap the graph to go back. Settings,
+  lists, keyboard and the graph return to the main screen after `config::kMenuIdleMs`
+  without a tap (not the photo viewer or the calibration).
 - Cities: Settings -> Cities. "+ Add" opens the keyboard (type without accents), the
   geocoder returns up to 5 places (names in the UI language; "Ð/ð" is normalised to
   "Đ/đ"), "+" adds one. Tap a city for Up / Down / Remove. Stored in NVS key "cities2"
@@ -159,7 +162,8 @@ weather client (`setCities()` keeps data of cities still in the list).
   `kHighlight` / `kBackground`, no flicker) to show the firmware is running.
 - Photos: Settings -> "Photos" button (header, top right) sends `UiAction::ScanPhotos`;
   `main.cpp` runs `PhotoLibrary::scan()` and the viewer waits for the new
-  `PhotoList::version`. Put baseline JPEGs (ideally 320x240) in `/photos` on a FAT32 card.
+  `PhotoList::version`. Tapping the middle third goes straight back to the main screen.
+  Put baseline JPEGs (ideally 320x240) in `/photos` on a FAT32 card.
   Decoding blocks the loop ~0.3-0.5 s per photo (bounded, like an HTTP request).
   `tools/make_test_chart.py` writes colour bars + a grey ramp to tune gamma / tone.
 - Language: `ui/strings.cpp` has one {Vietnamese, English} pair per `Str` id, in enum

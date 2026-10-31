@@ -61,5 +61,6 @@ class UiController {
   ScreenPhotos photos_;
   Screen screen_ = Screen::Dashboard;
   Screen afterCalibration_ = Screen::Dashboard;
+  uint32_t lastTapAt_ = 0;
   bool dashboardPending_ = true;  // full redraw on the next update (needs UiState)
 };
