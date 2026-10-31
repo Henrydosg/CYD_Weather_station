@@ -80,19 +80,40 @@ src/
   weather/openweathermap   HTTPS GET + filtered JSON parse -> WeatherData, refresh scheduling
   weather/owm_codes        OpenWeatherMap condition id -> WeatherCategory
   weather/owm_root_ca.h    USERTrust RSA root CA (valid to 2038-01-18) for TLS verification
-  ui/screen_main       main screen: weather card, detail list, footer, date; redraws on change
+  settings/settings.h      Settings / Language / TouchCalibration (plain data)
+  settings/settings_store  load/save Settings in NVS (Preferences, namespace "cyd-weather")
+  ui/ui_controller     owns the screens, routes taps, returns UiCommand to main.cpp
+  ui/screen_main       main screen: weather card, detail list, footer, date; VI/EN pill + gear
+  ui/screen_settings   language selector, touch calibration entry, WiFi status
+  ui/screen_calibration  two-point touch calibration (runs automatically on first boot)
+  ui/strings           all on-screen text, Vietnamese + English, via tr(Str::X)
+  ui/draw_utils        shared helpers: useFont (font cache), paintSky, drawCard, chevron
   ui/analog_clock      analog clock + digital time, rendered in sprites once per second
   ui/icon              alpha-blended RGB565 icon drawing
   ui/theme             "dynamic sky" palettes per weather/day-night, skyAt(), blend()
-  ui/touch_input       XPT2046 on VSPI, debounced tap detection
+  ui/touch_input       XPT2046 on VSPI, debounced taps with calibrated screen coordinates
   ui/assets/           GENERATED - fonts.* and icons.* (do not edit by hand)
 tools/
   gen_fonts.py         Roboto (C:/Windows/Fonts, Apache 2.0) -> VLW smooth fonts
   gen_icons.py         weather icons drawn with Pillow -> RGB565 + alpha arrays
 ```
 
-Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `touch.tapped()` →
-`weather.update()` → `screen.update(UiState)`.
+Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `weather.update()` →
+`ui.update(UiState, touch.poll())` → `UiCommand` (refresh / language changed / calibration
+saved) applied by `main.cpp`, which also persists settings.
+
+## Screens, touch and settings
+
+- Main: tap the VI/EN pill to toggle language, the gear (or signal bars) for Settings,
+  anywhere else to refresh the weather.
+- Touch coordinates come from a linear raw→pixel map (`TouchCalibration`). Defaults are in
+  `config.h`; on first boot (nothing in NVS) the calibration screen runs automatically.
+  Touch targets should be at least ~36 px (resistive panel).
+- Settings live in NVS and survive firmware uploads; erasing flash resets them (and
+  re-triggers calibration).
+- Language: `ui/strings.cpp` has one Vietnamese and one English entry per `Str` id, in
+  enum order. Never hard-code UI text in screens. Changing language re-requests the
+  weather with `lang=vi|en`.
 
 ## UI assets
 
@@ -101,7 +122,8 @@ Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `touch.tappe
 - Any character shown on screen must be in the font's glyph set in `gen_fonts.py`
   (`TEXT_CHARS`: ASCII + Vietnamese + `°`; `kFontTemp`/`kFontClock` contain digits only).
   Missing glyphs are silently skipped. Only precomposed (NFC) Vietnamese is supported.
-- Smooth fonts: `tft.loadFont(kFontX)`; `ScreenMain::useFont()` caches the loaded font.
+- Smooth fonts: always `ui::useFont(tft, kFontX)` (shared cache across screens), never
+  `tft.loadFont` directly.
   Always pass a background colour to `setTextColor(fg, bg)` so glyph edges blend correctly.
 - Theme: the background is a vertical sky gradient chosen by `theme::paletteFor()`
   (weather category + day/night). Paint any redrawn region with `theme::skyAt(palette, y)`
@@ -127,8 +149,8 @@ Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `touch.tappe
 - Modules don't depend on each other except through plain data (`WeatherData`,
   `WifiState`, `FetchStatus`, `UiState`). Only `main.cpp` knows about all modules.
 - Avoid `String` concatenation in hot paths; use `snprintf` into stack buffers for UI text.
-- On-screen text is Vietnamese (UTF-8 string literals) using the smooth fonts in
-  `ui/assets`; OpenWeatherMap descriptions are requested with `lang=vi`.
+- On-screen text comes from `tr()` (Vietnamese or English, UTF-8) using the smooth fonts
+  in `ui/assets`.
 - Serial logs: `Serial.printf("[module] ...")`, 115200 baud.
 - OpenWeatherMap is called over HTTPS with certificate verification (`setCACert`), since
   the API key is in the query string. Don't switch to `setInsecure()` or plain HTTP. If

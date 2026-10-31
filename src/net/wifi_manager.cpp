@@ -39,8 +39,8 @@ void WifiManager::update(uint32_t now) {
         state_ = WifiState::Connected;
         stateSince_ = now;
         retryDelayMs_ = config::kWifiRetryInitialMs;
-        Serial.printf("[wifi] connected, IP %s, RSSI %d dBm\n",
-                      WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        strlcpy(ip_, WiFi.localIP().toString().c_str(), sizeof(ip_));
+        Serial.printf("[wifi] connected, IP %s, RSSI %d dBm\n", ip_, WiFi.RSSI());
       } else if (elapsed >= config::kWifiConnectTimeoutMs) {
         Serial.println("[wifi] connect timeout");
         scheduleRetry(now);
@@ -51,6 +51,7 @@ void WifiManager::update(uint32_t now) {
       if (!linkUp) {
         Serial.println("[wifi] link lost, reconnecting");
         rssi_ = 0;
+        ip_[0] = '\0';
         startConnect(now);
       } else if (rssi_ == 0 || now - lastRssiSample_ >= config::kRssiSampleMs) {
         rssi_ = static_cast<int8_t>(WiFi.RSSI());

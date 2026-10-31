@@ -25,7 +25,25 @@ constexpr uint8_t kTouchMosi = 32;
 constexpr uint8_t kTouchMiso = 39;
 constexpr uint8_t kTouchCs = 33;
 constexpr uint8_t kTouchIrq = 36;
-constexpr uint32_t kTouchDebounceMs = 600;
+constexpr uint32_t kTouchDebounceMs = 300;
+constexpr uint8_t kTouchSamples = 4;  // raw readings averaged per tap
+// Default raw->screen mapping (raw value at screen x = 0 / x = 319 and
+// y = 0 / y = 239) until the user calibrates. Typical for CYD boards.
+constexpr int16_t kTouchRawLeft = 200;
+constexpr int16_t kTouchRawRight = 3700;
+constexpr int16_t kTouchRawTop = 240;
+constexpr int16_t kTouchRawBottom = 3800;
+// Calibration: targets are drawn this far from two opposite corners, and a
+// result spanning fewer raw units than this is rejected as a mis-tap.
+constexpr int16_t kCalTargetInset = 24;
+constexpr int16_t kCalMinRawSpan = 1000;
+constexpr uint32_t kCalDoneMessageMs = 1500;
+
+// ---------------------------------------------------------------------------
+// Settings (stored in NVS via Preferences)
+// ---------------------------------------------------------------------------
+constexpr char kSettingsNamespace[] = "cyd-weather";
+constexpr uint8_t kDefaultLanguage = 0;  // 0 = Vietnamese, 1 = English
 
 // ---------------------------------------------------------------------------
 // WiFi
@@ -49,13 +67,14 @@ constexpr uint32_t kMinValidEpoch = 1704067200UL;
 // ---------------------------------------------------------------------------
 // Location / OpenWeatherMap (Current Weather API 2.5, free tier)
 // ---------------------------------------------------------------------------
-constexpr char kLocationName[] = "TP. Hồ Chí Minh";  // UTF-8, glyphs from tools/gen_fonts.py
+// UTF-8; every glyph must exist in tools/gen_fonts.py.
+constexpr char kLocationNameVi[] = "TP. Hồ Chí Minh";
+constexpr char kLocationNameEn[] = "Ho Chi Minh City";
 constexpr char kLatitude[] = "10.82";
 constexpr char kLongitude[] = "106.63";
 
 constexpr char kOwmBaseUrl[] = "https://api.openweathermap.org/data/2.5/weather";
 constexpr char kOwmUnits[] = "metric";  // temperature in C, wind in m/s
-constexpr char kOwmLang[] = "vi";       // smooth fonts include Vietnamese glyphs
 constexpr uint32_t kWeatherRefreshMs = 10UL * 60UL * 1000UL;  // 10 minutes (limit: 60/min)
 constexpr uint32_t kWeatherRetryMs = 60UL * 1000UL;           // after an error
 constexpr uint16_t kHttpTimeoutMs = 5000;

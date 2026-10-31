@@ -279,7 +279,22 @@ def mini_feels(c):
     c.fill(m, (255, 150, 120), (235, 80, 70), 2, 19)
 
 
+def mini_gear(c):
+    m = c.new_mask()
+    d = ImageDraw.Draw(m)
+    teeth = 8
+    for i in range(teeth):
+        a = i * 2 * math.pi / teeth
+        c.line_mask(10 + math.cos(a) * 5, 10 + math.sin(a) * 5,
+                    10 + math.cos(a) * 8, 10 + math.sin(a) * 8, 3.2, m)
+    c.circle_mask(10, 10, 6.2, m)
+    hole = c.circle_mask(10, 10, 2.6)
+    d.bitmap((0, 0), hole, fill=0)
+    c.fill(m, (255, 255, 255), (215, 228, 245), 2, 18)
+
+
 MINI_ICONS = [
+    ("kIconGear", mini_gear),
     ("kIconFeels", mini_feels),
     ("kIconHumidity", mini_humidity),
     ("kIconWind", mini_wind),

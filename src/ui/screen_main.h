@@ -14,6 +14,8 @@
 struct UiState {
   WifiState wifi;
   int8_t rssi;              // dBm, 0 when not connected
+  const char* ssid;         // configured network name
+  const char* ip;           // dotted IP, "" when not connected
   FetchStatus fetch;
   uint32_t dataVersion;     // 0 = no data yet
   const WeatherData* data;  // valid when dataVersion > 0
@@ -22,18 +24,27 @@ struct UiState {
   struct tm localTime;      // valid when timeValid
 };
 
+enum class MainTarget : uint8_t {
+  None,      // background: refresh weather
+  Language,  // VI/EN pill
+  Settings,  // gear
+};
+
 class ScreenMain {
  public:
   explicit ScreenMain(TFT_eSPI& tft);
 
   void begin();
+  // Forces a full redraw on the next update() (after another screen was shown).
+  void invalidate() { firstFrame_ = true; }
   // Cheap to call every loop iteration; draws only on change.
   void update(const UiState& state);
 
+  MainTarget hitTest(int16_t x, int16_t y) const;
+  // Palette currently on screen (other screens reuse it).
+  const theme::Palette& palette() const;
+
  private:
-  void useFont(const uint8_t* font);
-  void paintSky(int16_t x, int16_t y, int16_t w, int16_t h);
-  uint16_t drawCard(int16_t x, int16_t y, int16_t w, int16_t h);
   void drawHeader(WifiState wifi, uint8_t bars);
   void drawWeather(const WeatherData* data);
   void drawDetails(const WeatherData* data);
@@ -43,7 +54,6 @@ class ScreenMain {
 
   TFT_eSPI& tft_;
   AnalogClock clock_;
-  const uint8_t* font_ = nullptr;
   const theme::Palette* palette_ = nullptr;
   bool firstFrame_ = true;
   uint8_t lastBars_ = 0;

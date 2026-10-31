@@ -13,6 +13,7 @@ extern const Icon kIconDrizzle;  // 72x72
 extern const Icon kIconRain;  // 72x72
 extern const Icon kIconSnow;  // 72x72
 extern const Icon kIconThunder;  // 72x72
+extern const Icon kIconGear;  // 16x16
 extern const Icon kIconFeels;  // 16x16
 extern const Icon kIconHumidity;  // 16x16
 extern const Icon kIconWind;  // 16x16

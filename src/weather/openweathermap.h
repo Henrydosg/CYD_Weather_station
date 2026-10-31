@@ -17,6 +17,12 @@ class OpenWeatherMapClient {
   // Ask for a refresh as soon as the network is available.
   void requestRefresh() { refreshRequested_ = true; }
 
+  // OpenWeatherMap "lang" code for descriptions ("vi", "en"); refetches.
+  void setLanguage(const char* code) {
+    lang_ = code;
+    requestRefresh();
+  }
+
   FetchStatus status() const { return status_; }
   bool hasData() const { return version_ > 0; }
   const WeatherData& data() const { return data_; }
@@ -29,6 +35,7 @@ class OpenWeatherMapClient {
   bool fetch(WeatherData& out);
 
   const char* apiKey_;
+  const char* lang_ = "vi";
   WeatherData data_;
   FetchStatus status_ = FetchStatus::NoData;
   uint32_t version_ = 0;

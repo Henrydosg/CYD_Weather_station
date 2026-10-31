@@ -17,7 +17,7 @@ constexpr int32_t kSecondsPerDay = 86400;
 constexpr int32_t kSecondsPerHour = 3600;
 constexpr int32_t kSecondsPerMinute = 60;
 
-String buildUrl(const char* apiKey) {
+String buildUrl(const char* apiKey, const char* lang) {
   String url = config::kOwmBaseUrl;
   url += "?lat=";
   url += config::kLatitude;
@@ -26,7 +26,7 @@ String buildUrl(const char* apiKey) {
   url += "&units=";
   url += config::kOwmUnits;
   url += "&lang=";
-  url += config::kOwmLang;
+  url += lang;
   url += "&appid=";
   url += apiKey;
   return url;
@@ -101,9 +101,9 @@ bool OpenWeatherMapClient::fetch(WeatherData& out) {
   http.useHTTP10(true);
 
   // The URL contains the API key, so it is never logged.
-  Serial.printf("[weather] GET %s (lat %s, lon %s)\n", config::kOwmBaseUrl, config::kLatitude,
-                config::kLongitude);
-  if (!http.begin(client, buildUrl(apiKey_))) {
+  Serial.printf("[weather] GET %s (lat %s, lon %s, lang %s)\n", config::kOwmBaseUrl,
+                config::kLatitude, config::kLongitude, lang_);
+  if (!http.begin(client, buildUrl(apiKey_, lang_))) {
     Serial.println("[weather] http.begin failed");
     return false;
   }
