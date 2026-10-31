@@ -11,6 +11,9 @@ namespace config {
 // Display
 // ---------------------------------------------------------------------------
 constexpr uint8_t kScreenRotation = 1;  // landscape, 320 x 240
+// Some CYD panel variants (e.g. "TPM408-2.8") show a colour negative unless
+// display inversion is enabled. Set to false if colours look inverted.
+constexpr bool kInvertDisplay = true;
 constexpr int16_t kScreenWidth = 320;
 constexpr int16_t kScreenHeight = 240;
 

@@ -89,6 +89,7 @@ ScreenMain::ScreenMain(TFT_eSPI& tft)
 
 void ScreenMain::begin() {
   tft_.setRotation(config::kScreenRotation);
+  tft_.invertDisplay(config::kInvertDisplay);
   tft_.fillScreen(kBg);
   clock_.begin();
   firstFrame_ = true;
