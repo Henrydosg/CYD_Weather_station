@@ -7,7 +7,7 @@
 #include "net/wifi_manager.h"
 #include "ui/screen_main.h"
 #include "ui/touch_input.h"
-#include "weather/open_meteo.h"
+#include "weather/openweathermap.h"
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -19,7 +19,7 @@ static TFT_eSPI tft;
 static ScreenMain screen(tft);
 static TouchInput touch;
 static WifiManager wifi(secrets::kWifiSsid, secrets::kWifiPassword);
-static OpenMeteoClient weather;
+static OpenWeatherMapClient weather(secrets::kOwmApiKey);
 
 void setup() {
   Serial.begin(115200);

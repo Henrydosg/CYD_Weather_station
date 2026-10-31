@@ -1,8 +1,10 @@
 # CYD Weather Station
 
 Weather display for the **ESP32-2432S028R** ("Cheap Yellow Display", CYD), built with
-PlatformIO + Arduino framework. Data comes from [Open-Meteo](https://open-meteo.com/)
-(no API key). Location: Ho Chi Minh City, refreshed every 10 minutes or on screen tap.
+PlatformIO + Arduino framework. Data comes from the
+[OpenWeatherMap](https://openweathermap.org/current) Current Weather API 2.5 (free tier,
+API key in `secrets.h`). Location: Ho Chi Minh City, refreshed every 10 minutes or on
+screen tap.
 
 ## Build
 
@@ -18,7 +20,9 @@ Build only, to check that it compiles:
 The user uploads and monitors from VS Code themselves.
 
 Before the first build, `include/secrets.h` must exist. Copy it from
-`include/secrets.example.h`. It is git-ignored and must never be committed.
+`include/secrets.example.h` and fill in WiFi SSID/password and the OpenWeatherMap API
+key. It is git-ignored and must never be committed. Never print the API key or the full
+request URL (it contains the key) to Serial, logs or docs.
 
 ## Board
 
@@ -57,7 +61,7 @@ time, `USER_SETUP_LOADED=1`). All other pins live in `include/config.h`.
 - `PaulStoffregen/XPT2046_Touchscreen` (git, pinned commit): touch
 - `bblanchon/ArduinoJson@^7.4.3`: JSON, **v7 API** (`JsonDocument`, `is<T>()`,
   not `StaticJsonDocument` / `DynamicJsonDocument` / `containsKey`)
-- Built in: `WiFi`, `HTTPClient`, `SPI`
+- Built in: `WiFi`, `WiFiClientSecure`, `HTTPClient`, `SPI`
 
 ## Layout
 
@@ -65,12 +69,14 @@ time, `USER_SETUP_LOADED=1`). All other pins live in `include/config.h`.
 include/
   config.h             all tunable constants (pins, location, intervals, timeouts)
   secrets.example.h    credentials template (committed)
-  secrets.h            real credentials (git-ignored)
+  secrets.h            WiFi credentials + OpenWeatherMap API key (git-ignored)
 src/
   main.cpp             setup()/loop() only: creates modules and wires them together
   net/wifi_manager     non-blocking STA state machine, reconnect with backoff 5 s to 60 s
-  weather/open_meteo   HTTP GET + filtered JSON parse -> WeatherData, refresh scheduling
-  weather/wmo_codes    WMO weather_code -> category + English description
+  weather/weather_data.h   provider-independent WeatherData / WeatherCategory / FetchStatus
+  weather/openweathermap   HTTPS GET + filtered JSON parse -> WeatherData, refresh scheduling
+  weather/owm_codes        OpenWeatherMap condition id -> WeatherCategory
+  weather/owm_root_ca.h    USERTrust RSA root CA (valid to 2038-01-18) for TLS verification
   ui/screen_main       main screen, redraws only regions whose inputs changed
   ui/touch_input       XPT2046 on VSPI, debounced tap detection
 ```
@@ -84,7 +90,7 @@ Data flow per `loop()`: `wifi.update()` → `touch.tapped()` → `weather.update
   `now - since >= interval`. No `delay()` beyond a few ms, no `while` loops waiting on
   WiFi/HTTP. Every module exposes `update(now)` and is called every loop.
 - The one bounded exception: `HTTPClient::GET()` is synchronous and limited by
-  `config::kHttpTimeoutMs`. `OpenMeteoClient` sets `FetchStatus::Fetching` one loop
+  `config::kHttpTimeoutMs`. `OpenWeatherMapClient` sets `FetchStatus::Fetching` one loop
   before the request so the UI can show "Updating..." first.
 - **No magic numbers:** pins, intervals, coordinates and timeouts go in `config.h`
   (`namespace config`, `constexpr`, `k` prefix). Purely visual layout and colour
@@ -95,6 +101,10 @@ Data flow per `loop()`: `wifi.update()` → `touch.tapped()` → `weather.update
 - Avoid `String` concatenation in hot paths; use `snprintf` into stack buffers for UI text.
 - Built-in TFT fonts are ASCII only. On-screen text is English, no Vietnamese diacritics.
 - Serial logs: `Serial.printf("[module] ...")`, 115200 baud.
-- Open-Meteo is called over plain HTTP (public, non-sensitive data; avoids TLS RAM cost).
+- OpenWeatherMap is called over HTTPS with certificate verification (`setCACert`), since
+  the API key is in the query string. Don't switch to `setInsecure()` or plain HTTP. If
+  OpenWeatherMap changes its certificate chain, update `owm_root_ca.h`.
+- UI code depends only on `weather_data.h`, never on provider-specific modules, so the
+  weather provider can be swapped without touching `src/ui`.
 - After every change, run the build command above and fix all errors and warnings in
   `src/`/`include/`.

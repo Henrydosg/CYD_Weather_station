@@ -8,4 +8,7 @@ namespace secrets {
 constexpr char kWifiSsid[] = "YOUR_WIFI_SSID";
 constexpr char kWifiPassword[] = "YOUR_WIFI_PASSWORD";
 
+// https://home.openweathermap.org/api_keys
+constexpr char kOwmApiKey[] = "YOUR_OPENWEATHERMAP_API_KEY";
+
 }  // namespace secrets

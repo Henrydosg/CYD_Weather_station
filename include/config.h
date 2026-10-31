@@ -33,15 +33,16 @@ constexpr uint32_t kWifiRetryInitialMs = 5000;
 constexpr uint32_t kWifiRetryMaxMs = 60000;
 
 // ---------------------------------------------------------------------------
-// Location / Open-Meteo
+// Location / OpenWeatherMap (Current Weather API 2.5, free tier)
 // ---------------------------------------------------------------------------
 constexpr char kLocationName[] = "Ho Chi Minh City";
 constexpr char kLatitude[] = "10.82";
 constexpr char kLongitude[] = "106.63";
-constexpr char kTimezone[] = "auto";
 
-constexpr char kOpenMeteoHost[] = "http://api.open-meteo.com";
-constexpr uint32_t kWeatherRefreshMs = 10UL * 60UL * 1000UL;  // 10 minutes
+constexpr char kOwmBaseUrl[] = "https://api.openweathermap.org/data/2.5/weather";
+constexpr char kOwmUnits[] = "metric";  // temperature in C, wind in m/s
+constexpr char kOwmLang[] = "en";       // TFT fonts are ASCII only
+constexpr uint32_t kWeatherRefreshMs = 10UL * 60UL * 1000UL;  // 10 minutes (limit: 60/min)
 constexpr uint32_t kWeatherRetryMs = 60UL * 1000UL;           // after an error
 constexpr uint16_t kHttpTimeoutMs = 5000;
 

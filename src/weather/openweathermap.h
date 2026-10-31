@@ -1,30 +1,16 @@
-// Open-Meteo client: periodic, scheduled with millis(), no API key needed.
+// OpenWeatherMap client (Current Weather API 2.5) over HTTPS,
+// scheduled with millis().
 #pragma once
 
 #include <stdint.h>
 
-struct WeatherData {
-  float temperatureC = 0;
-  float apparentC = 0;
-  float humidityPct = 0;
-  float windKmh = 0;
-  float todayMaxC = 0;
-  float todayMinC = 0;
-  int weatherCode = -1;
-  bool isDay = true;
-  char observedAt[6] = "--:--";  // local HH:MM reported by the API
-};
+#include "weather_data.h"
 
-enum class FetchStatus : uint8_t {
-  NoData,    // nothing fetched yet
-  Fetching,  // request scheduled for this loop iteration
-  Ok,
-  Error,
-};
-
-class OpenMeteoClient {
+class OpenWeatherMapClient {
  public:
-  // Call every loop iteration. The HTTP request itself is synchronous but
+  explicit OpenWeatherMapClient(const char* apiKey) : apiKey_(apiKey) {}
+
+  // Call every loop iteration. The HTTPS request itself is synchronous but
   // bounded by config::kHttpTimeoutMs.
   void update(uint32_t now, bool networkUp);
 
@@ -40,6 +26,7 @@ class OpenMeteoClient {
  private:
   bool fetch(WeatherData& out);
 
+  const char* apiKey_;
   WeatherData data_;
   FetchStatus status_ = FetchStatus::NoData;
   uint32_t version_ = 0;

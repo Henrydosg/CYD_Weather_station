@@ -1,6 +1,5 @@
 #include "screen_main.h"
 
-#include "../weather/wmo_codes.h"
 #include "config.h"
 
 namespace {
@@ -97,7 +96,7 @@ void ScreenMain::drawWeather(const WeatherData* d) {
     return;
   }
 
-  drawIcon(kIconCx, kIconCy, d->weatherCode, d->isDay);
+  drawIcon(kIconCx, kIconCy, d->category, d->isDay);
 
   // Temperature: big 7-segment digits followed by a degree mark and unit.
   char buf[32];
@@ -110,8 +109,12 @@ void ScreenMain::drawWeather(const WeatherData* d) {
   tft_.drawCircle(degX, kTempY + 5, 3, kText);
   tft_.drawString("C", degX + 7, kTempY, kFontMedium);
 
+  // Provider descriptions can be long ("thunderstorm with heavy drizzle").
+  const int16_t descMaxW = config::kScreenWidth - kTempX - kMargin;
+  const uint8_t descFont =
+      tft_.textWidth(d->description, kFontMedium) <= descMaxW ? kFontMedium : kFontSmall;
   tft_.setTextColor(kAccent, kBg);
-  tft_.drawString(wmoDescription(d->weatherCode), kTempX, kDescY, kFontMedium);
+  tft_.drawString(d->description, kTempX, kDescY, descFont);
 
   // Details: two columns, two rows.
   tft_.drawFastHLine(kMargin, kDetailsY, config::kScreenWidth - 2 * kMargin, kHeaderBg);
@@ -125,7 +128,7 @@ void ScreenMain::drawWeather(const WeatherData* d) {
   tft_.drawString(buf, kColRightX, row1, kFontSmall);
   snprintf(buf, sizeof(buf), "Wind %.1f km/h", d->windKmh);
   tft_.drawString(buf, kMargin, row2, kFontSmall);
-  snprintf(buf, sizeof(buf), "Today %.0f / %.0f C", d->todayMinC, d->todayMaxC);
+  snprintf(buf, sizeof(buf), "Pressure %.0f hPa", d->pressureHpa);
   tft_.drawString(buf, kColRightX, row2, kFontSmall);
 }
 
@@ -177,7 +180,7 @@ void ScreenMain::drawCloud(int16_t cx, int16_t cy, uint16_t color) {
   tft_.fillRoundRect(cx - 34, cy + 4, 74, 18, 9, color);
 }
 
-void ScreenMain::drawIcon(int16_t cx, int16_t cy, int weatherCode, bool isDay) {
+void ScreenMain::drawIcon(int16_t cx, int16_t cy, WeatherCategory category, bool isDay) {
   auto drawSky = [&](int16_t x, int16_t y, int16_t r) {
     if (isDay) {
       drawSun(x, y, r);
@@ -186,7 +189,7 @@ void ScreenMain::drawIcon(int16_t cx, int16_t cy, int weatherCode, bool isDay) {
     }
   };
 
-  switch (wmoCategory(weatherCode)) {
+  switch (category) {
     case WeatherCategory::Clear:
       drawSky(cx, cy, 24);
       break;
@@ -209,7 +212,7 @@ void ScreenMain::drawIcon(int16_t cx, int16_t cy, int weatherCode, bool isDay) {
     case WeatherCategory::Drizzle:
     case WeatherCategory::Rain: {
       drawCloud(cx, cy - 12, kDarkCloud);
-      const int drops = wmoCategory(weatherCode) == WeatherCategory::Rain ? 4 : 3;
+      const int drops = category == WeatherCategory::Rain ? 4 : 3;
       for (int i = 0; i < drops; ++i) {
         const int16_t x = cx - 24 + i * 16;
         tft_.drawWideLine(x, cy + 20, x - 6, cy + 36, 3, kRain, kBg);
