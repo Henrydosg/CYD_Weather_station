@@ -76,6 +76,15 @@ const Text kTexts[] = {
     {"%.1f tr. dân", "%.1fM people"},
     {"%.0f nghìn dân", "%.0fk people"},
     {"%lu dân", "%lu people"},
+    {"Ảnh", "Photos"},
+    {"Trước", "Previous"},
+    {"Sau", "Next"},
+    {"Quay lại", "Back"},
+    {"%u ảnh, tự chuyển sau %lu giây", "%u photos, next every %lu s"},
+    {"Đang đọc thẻ nhớ...", "Reading the SD card..."},
+    {"Không thấy thẻ nhớ", "No SD card found"},
+    {"Không có ảnh .jpg trong %s", "No .jpg photos in %s"},
+    {"Không đọc được ảnh", "Cannot read this photo"},
 };
 static_assert(sizeof(kTexts) / sizeof(kTexts[0]) == static_cast<size_t>(Str::Count),
               "kTexts must have one entry per Str id");

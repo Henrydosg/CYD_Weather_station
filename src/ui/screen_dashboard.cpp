@@ -139,6 +139,23 @@ void ScreenDashboard::update(const UiState& s, uint32_t now) {
     lastBars_ = bars;
     drawHeader(s);
   }
+  // Blinking ":" shows the clock (and the firmware) is running.
+  const bool colonOn = s.utcNow % 2 == 0;
+  if (minute >= 0 && colonOn != colonOn_) {
+    drawColon(colonOn);
+  }
+}
+
+void ScreenDashboard::drawColon(bool on) {
+  colonOn_ = on;
+  char tail[4];  // ":MM", right of the colon's left edge
+  snprintf(tail, sizeof(tail), ":%02d", lastMinute_);
+  useFont(tft_, kFontMedium);
+  const int16_t x = kTimeRightX - tft_.textWidth(tail);
+  // Drawing the glyph in the background colour erases it exactly.
+  tft_.setTextColor(on ? kHighlight : kBackground, kBackground);
+  tft_.setTextDatum(ML_DATUM);
+  tft_.drawString(":", x, kTimeMidY);
 }
 
 void ScreenDashboard::drawHeader(const UiState& s) {
@@ -161,6 +178,7 @@ void ScreenDashboard::drawHeader(const UiState& s) {
   char buf[24];
   const bool timeOk = cityTime(s, w, t);
   lastMinute_ = timeOk ? t.tm_min : -1;
+  colonOn_ = true;  // the full time string below includes the ":"
   if (timeOk) {
     snprintf(buf, sizeof(buf), "%02d:%02d", t.tm_hour, t.tm_min);
   } else {

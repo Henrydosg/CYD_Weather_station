@@ -18,7 +18,11 @@ constexpr int16_t kTextX = kRowX + 12;
 constexpr int16_t kChevronX = kRowX + kRowW - 12;
 constexpr int16_t kValueRightX = kChevronX - 14;
 constexpr int16_t kValueMaxW = 130;
-constexpr int16_t kTitleMaxW = 280;
+constexpr int16_t kTitleMaxW = 200;
+// "Photos" button in the header (top right)
+constexpr int16_t kPhotosW = 84, kPhotosH = 28;
+constexpr int16_t kPhotosX = config::kScreenWidth - 8 - kPhotosW, kPhotosY = 4;
+constexpr int16_t kPhotosHitX = kPhotosX - 10;
 
 enum Row : int { kCitiesRow, kRotationRow, kLanguageRow, kCalibrateRow, kWifiRow, kRowCount };
 
@@ -29,6 +33,9 @@ int16_t rowTop(int row) { return kRowY0 + row * kRowPitch; }
 void ScreenSettings::show(const UiState& state) {
   tft_.fillScreen(kBackground);
   ui::drawBackHeader(tft_, tr(Str::Settings), kTitleMaxW);
+  useFont(tft_, kFontSmall);
+  ui::drawPill(tft_, kPhotosX, kPhotosY, kPhotosW, kPhotosH, tr(Str::Photos), kAccent, kAccent,
+               true);
   drawCitiesRow(state);
   drawRotationRow(state);
   drawRow(kLanguageRow, tr(Str::Language), tr(Str::LanguageName), kMuted);
@@ -89,6 +96,9 @@ void ScreenSettings::drawWifiRow(const UiState& state) {
 SettingsTarget ScreenSettings::hitTest(int16_t x, int16_t y) const {
   if (ui::hit(x, y, 0, 0, ui::kBackHitW, ui::kBackHitH)) {
     return SettingsTarget::Back;
+  }
+  if (ui::hit(x, y, kPhotosHitX, 0, config::kScreenWidth - kPhotosHitX, ui::kBackHitH)) {
+    return SettingsTarget::Photos;
   }
   // Rows plus half of the gap around them
   const int16_t gap = kRowPitch - kRowH;

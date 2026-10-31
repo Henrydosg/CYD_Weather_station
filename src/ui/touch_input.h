@@ -1,9 +1,8 @@
-// XPT2046 touch input on its own SPI bus (the TFT uses HSPI).
-// Produces one debounced tap event per touch, with screen coordinates.
+// XPT2046 touch input over bit-banged SPI (the TFT uses HSPI, the SD card
+// VSPI). Produces one debounced tap event per touch, with screen coordinates.
 #pragma once
 
-#include <SPI.h>
-#include <XPT2046_Touchscreen.h>
+#include <stdint.h>
 
 #include "../settings/settings.h"
 
@@ -15,16 +14,17 @@ struct TouchEvent {
 
 class TouchInput {
  public:
-  TouchInput();
-
   void begin();
   void setCalibration(const TouchCalibration& cal) { cal_ = cal; }
   // Call every loop iteration. Never blocks.
   TouchEvent poll(uint32_t now);
 
  private:
-  SPIClass spi_;
-  XPT2046_Touchscreen ts_;
+  // One pressure + position measurement; false when not pressed.
+  bool read(int16_t& rawX, int16_t& rawY);
+  uint8_t transfer(uint8_t out);
+  uint16_t transfer16(uint16_t out);
+
   TouchCalibration cal_{};
   bool wasTouched_ = false;
   uint32_t lastTap_ = 0;

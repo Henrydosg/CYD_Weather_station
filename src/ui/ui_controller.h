@@ -11,6 +11,7 @@
 #include "screen_dashboard.h"
 #include "screen_graph.h"
 #include "screen_keyboard.h"
+#include "screen_photos.h"
 #include "screen_search.h"
 #include "screen_settings.h"
 #include "screen_wifi.h"
@@ -28,7 +29,7 @@ class UiController {
 
  private:
   enum class Screen : uint8_t {
-    Dashboard, Graph, Settings, Calibration, Wifi, Keyboard, Connect, Cities, Search
+    Dashboard, Graph, Settings, Calibration, Wifi, Keyboard, Connect, Cities, Search, Photos
   };
 
   void showDashboard();
@@ -39,7 +40,8 @@ class UiController {
   UiCommand connect(const char* ssid, const char* password, bool secured, const UiState& state);
 
   UiCommand updateDashboard(const UiState& state, const TouchEvent& touch, uint32_t now);
-  UiCommand updateSettings(const UiState& state, const TouchEvent& touch);
+  UiCommand updateSettings(const UiState& state, const TouchEvent& touch, uint32_t now);
+  void updatePhotos(const UiState& state, const TouchEvent& touch, uint32_t now);
   UiCommand updateWifi(const UiState& state, const TouchEvent& touch);
   UiCommand updateKeyboard(const UiState& state, const TouchEvent& touch, uint32_t now);
   UiCommand updateConnect(const UiState& state, const TouchEvent& touch, uint32_t now);
@@ -56,6 +58,7 @@ class UiController {
   ScreenConnect connect_;
   ScreenCities cities_;
   ScreenSearch search_;
+  ScreenPhotos photos_;
   Screen screen_ = Screen::Dashboard;
   Screen afterCalibration_ = Screen::Dashboard;
   bool dashboardPending_ = true;  // full redraw on the next update (needs UiState)

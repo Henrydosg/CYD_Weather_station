@@ -72,6 +72,16 @@ enum class Str : uint8_t {
   PopMillionsFmt,   // printf format, one %.1f
   PopThousandsFmt,  // printf format, one %.0f
   PopFmt,           // printf format, one %lu
+  // Photos (SD card)
+  Photos,
+  PhotoPrev,
+  PhotoNext,
+  PhotoBack,
+  PhotoCountFmt,    // printf format, %u (count) and %lu (seconds)
+  PhotoLoading,
+  PhotoNoCard,
+  PhotoNoFilesFmt,  // printf format, one %s (folder)
+  PhotoError,
   Count,
 };
 

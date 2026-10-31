@@ -26,7 +26,7 @@ constexpr int16_t kScreenWidth = 320;
 constexpr int16_t kScreenHeight = 240;
 
 // ---------------------------------------------------------------------------
-// Touch controller XPT2046 (own SPI bus, VSPI)
+// Touch controller XPT2046 (bit-banged SPI, so the SD card can use VSPI)
 // ---------------------------------------------------------------------------
 constexpr uint8_t kTouchClk = 25;
 constexpr uint8_t kTouchMosi = 32;
@@ -46,6 +46,20 @@ constexpr int16_t kTouchRawBottom = 3800;
 constexpr int16_t kCalTargetInset = 24;
 constexpr int16_t kCalMinRawSpan = 1000;
 constexpr uint32_t kCalDoneMessageMs = 1500;
+
+// ---------------------------------------------------------------------------
+// SD card (VSPI) and the photo viewer
+// ---------------------------------------------------------------------------
+constexpr uint8_t kSdSck = 18;
+constexpr uint8_t kSdMiso = 19;
+constexpr uint8_t kSdMosi = 23;
+constexpr uint8_t kSdCs = 5;
+constexpr uint32_t kSdFrequency = 20000000;
+constexpr char kPhotoDir[] = "/photos";  // JPEG files, ideally 320 x 240 baseline
+constexpr uint8_t kMaxPhotos = 64;
+constexpr uint8_t kMaxPhotoPathLen = 63;
+constexpr uint32_t kPhotoSlideMs = 15000;  // slideshow: next photo after this
+constexpr uint32_t kPhotoHintMs = 2000;    // tap-zone hint shown on opening
 
 // ---------------------------------------------------------------------------
 // Settings (stored in NVS via Preferences)

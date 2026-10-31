@@ -41,7 +41,7 @@ git-ignored and must never be committed. Never print WiFi passwords to Serial or
 | TFT DC             | 2    |                                            |
 | TFT RST            | -1   | tied to EN                                 |
 | TFT backlight      | 21   | active HIGH, turned on by `tft.init()`     |
-| Touch CLK          | 25   | separate VSPI bus                          |
+| Touch CLK          | 25   | bit-banged SPI (`ui/touch_input`)          |
 | Touch MOSI         | 32   |                                            |
 | Touch MISO         | 39   | input only                                 |
 | Touch CS           | 33   |                                            |
@@ -49,7 +49,7 @@ git-ignored and must never be committed. Never print WiFi passwords to Serial or
 | RGB LED R / G / B  | 4 / 16 / 17 | active LOW (not used yet)           |
 | LDR                | 34   | ADC input (not used yet)                   |
 | Speaker            | 26   | DAC (not used yet)                         |
-| SD card CS         | 5    | VSPI, conflicts with touch bus (not used)  |
+| SD card SCK/MISO/MOSI/CS | 18 / 19 / 23 / 5 | VSPI, photo viewer   |
 
 TFT pins are set as `build_flags` in `platformio.ini` (TFT_eSPI needs them at compile
 time, `USER_SETUP_LOADED=1`). All other pins live in `include/config.h`.
@@ -58,10 +58,10 @@ time, `USER_SETUP_LOADED=1`). All other pins live in `include/config.h`.
 
 - Platform `espressif32@6.10.0` (Arduino-ESP32 2.x)
 - `bodmer/TFT_eSPI@^2.5.43`: display
-- `PaulStoffregen/XPT2046_Touchscreen` (git, pinned commit): touch
+- `bodmer/TJpg_Decoder@1.1.0`: JPEG photos from the SD card (built-in `SD`)
 - `bblanchon/ArduinoJson@^7.4.3`: JSON, **v7 API** (`JsonDocument`, `is<T>()`,
   not `StaticJsonDocument` / `DynamicJsonDocument` / `containsKey`)
-- Built in: `WiFi`, `WiFiClientSecure`, `HTTPClient`, `SPI`
+- Built in: `WiFi`, `WiFiClientSecure`, `HTTPClient`, `SPI`, `SD`
 
 ## Layout
 
@@ -106,7 +106,11 @@ src/
                        drawFitted (shrink / trim UTF-8 text), signal bars, chevron
   ui/icon, weather_icons.h  alpha-blended RGB565 icons; category -> 72 px / 30 px icon
   ui/theme             navy colour set, temperatureColor(), UV / AQI levels and colours
-  ui/touch_input       XPT2046 on VSPI, debounced taps with calibrated screen coordinates
+  ui/touch_input       XPT2046 over bit-banged SPI (same raw values as the old XPT2046_Touchscreen
+                       library), debounced taps with calibrated screen coordinates
+  ui/screen_photos     JPEG viewer: tap-zone hint, left = previous, middle = back, right = next,
+                       slideshow every kPhotoSlideMs; photos larger than 320x240 scaled 1/2..1/8
+  photos/photo_library mounts the SD card on VSPI on every scan, lists /photos/*.jpg (sorted)
   ui/assets/           GENERATED - fonts.* and icons.* (do not edit by hand)
 tools/
   gen_fonts.py         Roboto (C:/Windows/Fonts, Apache 2.0) -> VLW smooth fonts
@@ -144,6 +148,12 @@ weather client (`setCities()` keeps data of cities still in the list).
   boot the saved networks are tried in order, then `secrets.h`. The UI only sends
   `UiAction::ScanWifi / ConnectWifi / ForgetWifi`; `main.cpp` drives `WifiManager` and
   saves on `ConnectAttempt::Succeeded`.
+- Clock: the ":" of the dashboard time blinks once a second (redrawn alone in
+  `kHighlight` / `kBackground`, no flicker) to show the firmware is running.
+- Photos: Settings -> "Photos" button (header, top right) sends `UiAction::ScanPhotos`;
+  `main.cpp` runs `PhotoLibrary::scan()` and the viewer waits for the new
+  `PhotoList::version`. Put baseline JPEGs (ideally 320x240) in `/photos` on a FAT32 card.
+  Decoding blocks the loop ~0.3-0.5 s per photo (bounded, like an HTTP request).
 - Language: `ui/strings.cpp` has one {Vietnamese, English} pair per `Str` id, in enum
   order (checked by a static_assert). Never hard-code UI text in screens. Weather texts are
   local (per WMO code), so changing language needs no refetch.

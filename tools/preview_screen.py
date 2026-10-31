@@ -8,7 +8,8 @@ angle are not simulated. Keep it in sync when a screen's layout changes.
 Usage (from the project root, needs Pillow):
     python tools/preview_screen.py --out preview.png [--scale 2] [--screen main|setup|wifi]
       main:  dashboard (two cities) and the 24 h graph
-      setup: settings, city manager, action panel, search keyboard, search results
+      setup: settings, city manager, action panel, search keyboard, search results,
+             photo viewer hint and message
       wifi:  WiFi list, password keyboard, connect error
 """
 
@@ -239,6 +240,7 @@ def settings():
     """screen_settings.cpp"""
     img, _ = new_screen()
     back_header(img, "Cài đặt")
+    pill(img, 228, 4, 84, 28, "Ảnh", C["Accent"], C["Accent"], True)
     rows = [("Thành phố", "7 / 8", C["Highlight"]), ("Đổi thành phố sau", "20 giây", C["Highlight"]),
             ("Ngôn ngữ", "Tiếng Việt", C["Muted"]), ("Hiệu chuẩn cảm ứng", "", C["Muted"]),
             ("WiFi", "NhaRieng", C["Ok"])]
@@ -250,6 +252,33 @@ def settings():
         d.text((18, mid), lab, font=F["small"], fill=C["Ink"], anchor="lm")
         d.text((288, mid), val, font=F["small"], fill=col, anchor="rm")
         chevron(d, 302, mid, True, C["Muted"])
+    return img
+
+
+def photos_hint():
+    """screen_photos.cpp: tap zones shown when the viewer opens"""
+    img, d = new_screen()
+    d.text((160, 20), "Ảnh", font=F["medium"], fill=C["Ink"], anchor="mm")
+    zone = 320 // 3
+    for i in (1, 2):
+        d.line((i * zone, 44, i * zone, 195), fill=C["Line"])
+    mid = (44 + 196) // 2
+    for cx, label, right in ((zone // 2, "Trước", False), (320 - zone // 2, "Sau", True)):
+        d.text((cx, mid), label, font=F["small"], fill=C["Accent"], anchor="mm")
+        half = d.textlength(label, font=F["small"]) / 2
+        chevron(d, cx + (half + 10 if right else -half - 10), mid, right, C["Accent"])
+    d.text((160, mid), "Quay lại", font=F["small"], fill=C["Muted"], anchor="mm")
+    d.text((160, 218), "12 ảnh, tự chuyển sau 15 giây", font=F["tiny"], fill=C["Muted"],
+           anchor="mm")
+    return img
+
+
+def photos_message():
+    """screen_photos.cpp: no card / no photos"""
+    img, d = new_screen()
+    d.text((160, 108), "Không có ảnh .jpg trong /photos", font=F["small"], fill=C["Error"],
+           anchor="mm")
+    d.text((160, 136), "Quay lại", font=F["tiny"], fill=C["Muted"], anchor="mm")
     return img
 
 
@@ -416,7 +445,8 @@ def connect_failed():
 SCREENS = {
     "main": lambda: [dashboard(0), dashboard(5), graph()],
     "setup": lambda: [settings(), cities(), cities(panel=True),
-                      keyboard("Thêm thành phố", "melbourne", False, "Tìm"), search_results()],
+                      keyboard("Thêm thành phố", "melbourne", False, "Tìm"), search_results(),
+                      photos_hint(), photos_message()],
     "wifi": lambda: [wifi_list(), keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối"),
                      keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối", "symbols"),
                      connect_failed()],

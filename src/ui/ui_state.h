@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include "../net/wifi_manager.h"
+#include "../photos/photo_library.h"
 #include "../settings/settings.h"
 #include "../weather/weather_data.h"
 
@@ -32,6 +33,8 @@ struct UiState {
   uint32_t searchVersion;
   const GeoResult* searchResults;
   uint8_t searchCount;
+  // Photos on the SD card (scanned on UiAction::ScanPhotos)
+  const PhotoList* photos;
   // Clock
   bool timeValid;
   time_t utcNow;            // valid when timeValid
@@ -49,6 +52,7 @@ enum class UiAction : uint8_t {
   AddCity,           // see UiCommand::index (into the search results)
   MoveCity,          // see UiCommand::index / delta
   RemoveCity,        // see UiCommand::index
+  ScanPhotos,        // (re)mount the SD card and list the photos
 };
 
 struct UiCommand {

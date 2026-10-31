@@ -26,6 +26,8 @@ class ScreenDashboard {
   // Redraws the current city over the previous one; restarts its display time.
   void redraw(const UiState& s, uint32_t now);
   void drawHeader(const UiState& s);
+  // Shows / hides the ":" of the clock (blinks once a second).
+  void drawColon(bool on);
   void drawCurrent(const CityWeather& w);
   void drawDetails(const CityWeather& w);
   void drawDays(const CityWeather& w);
@@ -40,6 +42,7 @@ class ScreenDashboard {
   uint32_t lastData_ = 0;
   uint32_t lastCities_ = 0;
   int lastMinute_ = -1;
+  bool colonOn_ = true;
   uint8_t lastBars_ = 0;
   WifiState lastWifi_ = WifiState::Idle;
 };

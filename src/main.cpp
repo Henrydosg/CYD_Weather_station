@@ -9,6 +9,7 @@
 #include "config.h"
 #include "net/time_sync.h"
 #include "net/wifi_manager.h"
+#include "photos/photo_library.h"
 #include "settings/settings_store.h"
 #include "ui/touch_input.h"
 #include "ui/ui_controller.h"
@@ -32,6 +33,7 @@ static TimeSync timeSync;
 static OpenMeteoClient weather;
 static GeocodingClient geocoder;
 static CityNameResolver cityNames;
+static PhotoLibrary photos;
 static uint32_t citiesVersion = 1;
 
 // Network the user asked for; remembered in NVS once the connect succeeds.
@@ -117,6 +119,9 @@ static void apply(const UiCommand& cmd, uint32_t now) {
         citiesChanged();
       }
       break;
+    case UiAction::ScanPhotos:
+      photos.scan();
+      break;
     case UiAction::None:
       break;
   }
@@ -173,6 +178,7 @@ void loop() {
   state.searchVersion = geocoder.version();
   state.searchResults = geocoder.results();
   state.searchCount = geocoder.count();
+  state.photos = &photos.list();
   state.timeValid = timeSync.isValid();
   state.utcNow = time(nullptr);
 

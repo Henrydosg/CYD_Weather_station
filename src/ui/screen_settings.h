@@ -1,5 +1,5 @@
 // Settings screen: one row each for cities, rotation interval, language,
-// touch calibration and WiFi.
+// touch calibration and WiFi; "Photos" button in the header.
 #pragma once
 
 #include <TFT_eSPI.h>
@@ -14,6 +14,7 @@ enum class SettingsTarget : uint8_t {
   Language,  // toggles Vietnamese / English
   Calibrate,
   Wifi,
+  Photos,
 };
 
 class ScreenSettings {

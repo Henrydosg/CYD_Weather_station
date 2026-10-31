@@ -30,7 +30,8 @@ UiController::UiController(TFT_eSPI& tft)
       keyboard_(tft),
       connect_(tft),
       cities_(tft),
-      search_(tft) {}
+      search_(tft),
+      photos_(tft) {}
 
 void UiController::begin(const Settings& settings) {
   tft_.setRotation(config::kScreenRotation);
@@ -92,7 +93,7 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
       }
       return UiCommand{};
     case Screen::Settings:
-      return updateSettings(state, touch);
+      return updateSettings(state, touch, now);
     case Screen::Wifi:
       return updateWifi(state, touch);
     case Screen::Keyboard:
@@ -103,6 +104,9 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
       return updateCities(state, touch);
     case Screen::Search:
       return updateSearch(state, touch);
+    case Screen::Photos:
+      updatePhotos(state, touch, now);
+      return UiCommand{};
     case Screen::Calibration: {
       UiCommand cmd;
       calibration_.handleTap(touch, now);
@@ -141,7 +145,8 @@ UiCommand UiController::updateDashboard(const UiState& state, const TouchEvent& 
   return UiCommand{};
 }
 
-UiCommand UiController::updateSettings(const UiState& state, const TouchEvent& touch) {
+UiCommand UiController::updateSettings(const UiState& state, const TouchEvent& touch,
+                                         uint32_t now) {
   UiCommand cmd;
   if (!touch.tapped) {
     settings_.update(state);
@@ -150,6 +155,11 @@ UiCommand UiController::updateSettings(const UiState& state, const TouchEvent& t
   switch (settings_.hitTest(touch.x, touch.y)) {
     case SettingsTarget::Back:
       showDashboard();
+      break;
+    case SettingsTarget::Photos:
+      screen_ = Screen::Photos;
+      photos_.open(state.photos != nullptr ? state.photos->version : 0, now);
+      cmd.action = UiAction::ScanPhotos;
       break;
     case SettingsTarget::Cities:
       screen_ = Screen::Cities;
@@ -337,6 +347,24 @@ UiCommand UiController::updateCities(const UiState& state, const TouchEvent& tou
       break;
   }
   return cmd;
+}
+
+void UiController::updatePhotos(const UiState& state, const TouchEvent& touch, uint32_t now) {
+  if (!touch.tapped) {
+    photos_.update(state, now);
+    return;
+  }
+  switch (photos_.hitTest(touch.x)) {
+    case PhotoTarget::Back:
+      showSettings(state);
+      break;
+    case PhotoTarget::Prev:
+      photos_.step(state, -1);
+      break;
+    case PhotoTarget::Next:
+      photos_.step(state, 1);
+      break;
+  }
 }
 
 UiCommand UiController::updateSearch(const UiState& state, const TouchEvent& touch) {
