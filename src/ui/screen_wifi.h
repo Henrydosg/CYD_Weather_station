@@ -4,7 +4,7 @@
 
 #include <TFT_eSPI.h>
 
-#include "screen_main.h"
+#include "ui_state.h"
 
 enum class WifiTarget : uint8_t { None, Back, Rescan, PrevPage, NextPage, Network };
 

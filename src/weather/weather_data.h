@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "config.h"
+
 enum class WeatherCategory : uint8_t {
   Clear,
   PartlyCloudy,
@@ -15,18 +17,51 @@ enum class WeatherCategory : uint8_t {
   Unknown,
 };
 
-struct WeatherData {
+// WMO weather interpretation code (0..99) -> icon category.
+WeatherCategory wmoCategory(uint8_t code);
+
+struct DailyForecast {
+  uint8_t mday;     // local date
+  uint8_t month;    // 1..12
+  uint8_t wday;     // 0 = Sunday
+  uint8_t wmoCode;
+  float maxC;
+  float minC;
+};
+
+struct HourlyPoint {
+  uint8_t hour;  // local hour 0..23
+  uint8_t wmoCode;
+  bool isDay;
+  uint8_t precipPct;  // probability of precipitation
+  float tempC;
+};
+
+// Everything shown for one city.
+struct CityWeather {
+  bool valid = false;
+  float latitude = 0;  // the request coordinates (to match saved cities)
+  float longitude = 0;
+  int32_t utcOffsetSec = 0;  // city local time = UTC + this
+
   float temperatureC = 0;
   float apparentC = 0;
   float humidityPct = 0;
   float windKmh = 0;
+  uint16_t windDirDeg = 0;  // meteorological: direction the wind comes from
   float pressureHpa = 0;
-  WeatherCategory category = WeatherCategory::Unknown;
+  uint8_t cloudPct = 0;
+  float uvIndex = 0;
+  int16_t usAqi = -1;  // -1 = unknown
+  uint8_t wmoCode = 0;
   bool isDay = true;
-  char description[64] = "";     // UTF-8, provider language
-  char observedAt[6] = "--:--";  // local HH:MM of the observation
-  int16_t sunriseMin = -1;       // local minutes after midnight, -1 = unknown
+  int16_t sunriseMin = -1;  // local minutes after midnight, -1 = unknown
   int16_t sunsetMin = -1;
+
+  uint8_t dailyCount = 0;
+  DailyForecast daily[config::kForecastDays];
+  uint8_t hourlyCount = 0;
+  HourlyPoint hourly[config::kForecastHours / config::kHourlyStep];
 };
 
 enum class FetchStatus : uint8_t {
@@ -35,3 +70,14 @@ enum class FetchStatus : uint8_t {
   Ok,
   Error,
 };
+
+// City search (geocoding)
+struct GeoResult {
+  char name[config::kMaxCityNameLen + 1];
+  char region[config::kMaxCityRegionLen + 1];  // "admin1, country"
+  float latitude;
+  float longitude;
+  uint32_t population;  // 0 = unknown
+};
+
+enum class SearchStatus : uint8_t { Idle, Searching, Done, Failed };

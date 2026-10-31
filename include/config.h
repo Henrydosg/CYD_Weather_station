@@ -78,18 +78,34 @@ constexpr char kNtpServer2[] = "time.google.com";
 constexpr uint32_t kMinValidEpoch = 1704067200UL;
 
 // ---------------------------------------------------------------------------
-// Location / OpenWeatherMap (Current Weather API 2.5, free tier)
+// Cities (entered on the device, stored in NVS) and their rotation
 // ---------------------------------------------------------------------------
-// UTF-8; every glyph must exist in tools/gen_fonts.py.
-constexpr char kLocationNameVi[] = "TP. Hồ Chí Minh";
-constexpr char kLocationNameEn[] = "Ho Chi Minh City";
-constexpr char kLatitude[] = "10.82";
-constexpr char kLongitude[] = "106.63";
+constexpr uint8_t kMaxCities = 8;
+constexpr uint8_t kMaxCityNameLen = 47;    // UTF-8 bytes
+constexpr uint8_t kMaxCityRegionLen = 47;  // "admin1, country"
+// Used until the user has saved any city. UTF-8; glyphs must exist in gen_fonts.py.
+constexpr char kDefaultCityName[] = "TP. Hồ Chí Minh";
+constexpr char kDefaultCityRegion[] = "Việt Nam";
+constexpr float kDefaultCityLat = 10.82f;
+constexpr float kDefaultCityLon = 106.63f;
+// Seconds each city stays on the main screen; Settings cycles through these.
+constexpr uint8_t kRotateChoicesSec[] = {10, 20, 30, 60};
+constexpr uint8_t kDefaultRotateSec = 20;
+constexpr uint32_t kRotatePauseMs = 60000;  // after a tap, rotation waits this long
 
-constexpr char kOwmBaseUrl[] = "https://api.openweathermap.org/data/2.5/weather";
-constexpr char kOwmUnits[] = "metric";  // temperature in C, wind in m/s
-constexpr uint32_t kWeatherRefreshMs = 10UL * 60UL * 1000UL;  // 10 minutes (limit: 60/min)
+// ---------------------------------------------------------------------------
+// Open-Meteo (free, no API key; non-commercial limit 10 000 calls per day)
+// ---------------------------------------------------------------------------
+constexpr char kForecastUrl[] = "https://api.open-meteo.com/v1/forecast";
+constexpr char kAirQualityUrl[] = "https://air-quality-api.open-meteo.com/v1/air-quality";
+constexpr char kGeocodingUrl[] = "https://geocoding-api.open-meteo.com/v1/search";
+constexpr uint8_t kForecastDays = 7;
+constexpr uint8_t kForecastHours = 24;
+constexpr uint8_t kHourlyStep = 3;  // the 24 h graph shows every 3rd hour
+constexpr uint8_t kGeoMaxResults = 5;
+constexpr uint8_t kMaxSearchLen = 40;
+constexpr uint32_t kWeatherRefreshMs = 10UL * 60UL * 1000UL;  // all cities in one request
 constexpr uint32_t kWeatherRetryMs = 60UL * 1000UL;           // after an error
-constexpr uint16_t kHttpTimeoutMs = 5000;
+constexpr uint16_t kHttpTimeoutMs = 8000;
 
 }  // namespace config

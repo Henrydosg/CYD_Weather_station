@@ -142,10 +142,7 @@ void ScreenWifi::drawStatus(const UiState& s) {
 }
 
 void ScreenWifi::drawList(const UiState& s) {
-  // The list card's shadow reaches the pager, so both are repainted.
-  tft_.fillRect(0, kListY - ui::kShadowSpread, kW,
-                config::kScreenHeight - (kListY - ui::kShadowSpread),
-                kBackground);
+  tft_.fillRect(0, kListY, kW, config::kScreenHeight - kListY, kBackground);
   ui::drawCard(tft_, kListX, kListY, kListW, kListH);
 
   const uint8_t n = s.scanResults != nullptr ? s.scanResults->count : 0;
@@ -217,7 +214,7 @@ void ScreenWifi::drawPager(uint8_t pages) {
   } buttons[] = {{kPrevX, Str::WifiPrev, false, page_ > 0},
                  {kNextX, Str::WifiNext, true, page_ + 1 < pages}};
   for (const auto& b : buttons) {
-    const uint16_t fg = b.enabled ? kInk : kClockMinor;
+    const uint16_t fg = b.enabled ? kInk : kDisabled;
     tft_.fillSmoothRoundRect(b.x, kPagerY, kPagerBtnW, kPagerH, kPagerH / 2, kTrack, kBackground);
     tft_.setTextColor(fg, kTrack);
     tft_.setTextDatum(MC_DATUM);

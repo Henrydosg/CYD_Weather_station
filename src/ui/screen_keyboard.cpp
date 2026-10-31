@@ -36,7 +36,6 @@ constexpr int16_t kWideW = (kRowW - 7 * (kKeyW + kGap) - kGap) / 2;  // Shift / 
 constexpr int16_t kSpaceW = 118, kCancelW = 48;
 constexpr int kRows = 4;
 constexpr uint32_t kPressFlashMs = 120;
-constexpr uint16_t kKeyBg = rgb(236, 243, 252);
 
 const char* const kLower[] = {"qwertyuiop", "asdfghjkl", "zxcvbnm"};
 const char* const kSymbols[] = {"1234567890", "@#$%&*-+()", "_!?/:;'\"."};
@@ -65,20 +64,25 @@ void drawBackspaceIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t c, uint16
 
 }  // namespace
 
-void ScreenKeyboard::start(const char* ssid) {
-  strlcpy(ssid_, ssid, sizeof(ssid_));
+void ScreenKeyboard::start(const char* title, KeyboardMode mode) {
+  strlcpy(title_, title, sizeof(title_));
+  mode_ = mode;
   clear();
   layout_ = Layout::Lower;
-  visible_ = false;
+  visible_ = mode == KeyboardMode::Search;
   show();
 }
 
-void ScreenKeyboard::clear() { memset(password_, 0, sizeof(password_)); }
+void ScreenKeyboard::clear() { memset(text_, 0, sizeof(text_)); }
+
+size_t ScreenKeyboard::maxLen() const {
+  return mode_ == KeyboardMode::Password ? config::kMaxPasswordLen : config::kMaxSearchLen;
+}
 
 void ScreenKeyboard::show() {
   pressed_ = KeyRect{};
   tft_.fillScreen(kBackground);
-  ui::drawBackHeader(tft_, ssid_, kTitleMaxW);
+  ui::drawBackHeader(tft_, title_, kTitleMaxW);
   drawField();
   drawKeys();
 }
@@ -96,9 +100,9 @@ void ScreenKeyboard::drawField() {
 
   // Show the end of a long password; the keyboard only types ASCII.
   char shown[config::kMaxPasswordLen + 1];
-  const size_t len = strlen(password_);
+  const size_t len = strlen(text_);
   for (size_t i = 0; i < len; ++i) {
-    shown[i] = visible_ ? password_[i] : kHiddenChar;
+    shown[i] = visible_ ? text_[i] : kHiddenChar;
   }
   shown[len] = '\0';
   useFont(tft_, kFontMedium);
@@ -113,10 +117,12 @@ void ScreenKeyboard::drawField() {
                 kAccent);
   memset(shown, 0, sizeof(shown));
 
-  useFont(tft_, kFontSmall);
-  tft_.setTextColor(kAccent, kBackground);
-  tft_.setTextDatum(MR_DATUM);
-  tft_.drawString(tr(visible_ ? Str::KeyHide : Str::KeyShow), kToggleRightX, kFieldMidY);
+  if (mode_ == KeyboardMode::Password) {
+    useFont(tft_, kFontSmall);
+    tft_.setTextColor(kAccent, kBackground);
+    tft_.setTextDatum(MR_DATUM);
+    tft_.drawString(tr(visible_ ? Str::KeyHide : Str::KeyShow), kToggleRightX, kFieldMidY);
+  }
 }
 
 void ScreenKeyboard::drawKeys() {
@@ -138,7 +144,7 @@ void ScreenKeyboard::drawKeys() {
 void ScreenKeyboard::drawKey(const KeyRect& k, bool pressed) {
   const bool shiftOn = k.key == Key::Shift && layout_ == Layout::Upper;
   const bool accent = k.key == Key::Connect || shiftOn || pressed;
-  const uint16_t bg = accent ? kAccent : kKeyBg;
+  const uint16_t bg = accent ? kAccent : kTrack;
   const uint16_t fg = accent ? kOnAccent : kInk;
   tft_.fillSmoothRoundRect(k.x, k.y, k.w, kKeyH, kKeyRadius, bg, kBackground);
   const int16_t cx = k.x + k.w / 2, cy = k.y + kKeyH / 2;
@@ -172,7 +178,8 @@ void ScreenKeyboard::drawKey(const KeyRect& k, bool pressed) {
       break;
     case Key::Connect:
       useFont(tft_, kFontSmall);
-      tft_.drawString(tr(Str::KeyConnect), cx, cy);
+      tft_.drawString(tr(mode_ == KeyboardMode::Password ? Str::KeyConnect : Str::KeySearch),
+                      cx, cy);
       break;
     default:
       break;
@@ -242,13 +249,14 @@ KeyboardResult ScreenKeyboard::handleTap(int16_t x, int16_t y, uint32_t now) {
   if (ui::hit(x, y, 0, 0, ui::kBackHitW, ui::kBackHitH)) {
     return KeyboardResult::Cancel;
   }
-  if (ui::hit(x, y, kToggleHitX, kFieldY, kW - kToggleHitX, kFieldH)) {
+  if (mode_ == KeyboardMode::Password &&
+      ui::hit(x, y, kToggleHitX, kFieldY, kW - kToggleHitX, kFieldH)) {
     visible_ = !visible_;
     drawField();
     return KeyboardResult::None;
   }
   const KeyRect k = keyAt(x, y);
-  size_t len = strlen(password_);
+  size_t len = strlen(text_);
   switch (k.key) {
     case Key::None:
       return KeyboardResult::None;
@@ -266,13 +274,13 @@ KeyboardResult ScreenKeyboard::handleTap(int16_t x, int16_t y, uint32_t now) {
       return KeyboardResult::None;
     case Key::Backspace:
       if (len > 0) {
-        password_[len - 1] = '\0';
+        text_[len - 1] = '\0';
       }
       break;
     default:  // Char, Space
-      if (len < config::kMaxPasswordLen) {
-        password_[len] = k.ch;
-        password_[len + 1] = '\0';
+      if (len < maxLen()) {
+        text_[len] = k.ch;
+        text_[len + 1] = '\0';
       }
       break;
   }

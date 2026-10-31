@@ -21,9 +21,9 @@ OUT_DIR = ROOT / "src" / "ui" / "assets"
 
 BASE = 72        # design grid: all coordinates below are in 0..72 units
 SUPER = 8        # supersampling factor
-PREVIEW_BG = (255, 255, 255)  # white background and cards (src/ui/theme.h)
+PREVIEW_BG = (14, 22, 46)  # navy background (src/ui/theme.h kBackground)
 
-# Palette (tuned for the white background)
+# Palette (readable on the navy background)
 SUN_TOP, SUN_BOTTOM, SUN_RAY = (255, 224, 130), (255, 160, 0), (255, 179, 0)
 MOON_TOP, MOON_BOTTOM = (255, 214, 102), (245, 170, 40)
 CLOUD_TOP, CLOUD_BOTTOM = (214, 234, 255), (165, 205, 248)
@@ -33,7 +33,7 @@ BOLT_TOP, BOLT_BOTTOM = (255, 236, 130), (255, 145, 0)
 SNOW = (125, 190, 240)
 FOG_TOP, FOG_BOTTOM = (170, 185, 205), (125, 140, 165)
 WIND_TOP, WIND_BOTTOM = (90, 160, 225), (40, 110, 190)
-GEAR = (12, 52, 120)  # theme::kInk
+GEAR = (255, 255, 255)  # theme::kInk
 
 
 class Canvas:
@@ -302,6 +302,7 @@ MINI_ICONS = [
     ("kIconWind", mini_wind),
     ("kIconPressure", mini_pressure),
 ]
+SMALL_SIZE = 30  # forecast strip and 24 h graph ("...Small" icons)
 MINI_BASE = 20   # design grid of the detail icons
 MINI_SIZE = 16   # output size (one detail row is 20 px tall)
 
@@ -336,6 +337,7 @@ def main() -> None:
     args = parser.parse_args()
 
     images = [(n, render(f, BASE)) for n, f in WEATHER_ICONS]
+    images += [(n + "Small", render(f, BASE, SMALL_SIZE)) for n, f in WEATHER_ICONS]
     images += [(n, render(f, MINI_BASE, MINI_SIZE)) for n, f in MINI_ICONS]
 
     header = [
@@ -368,7 +370,7 @@ def main() -> None:
     if args.preview:
         scale = 2
         cell = BASE * scale + 16
-        sheet = Image.new("RGB", (cell * 5, cell * 3), PREVIEW_BG)
+        sheet = Image.new("RGB", (cell * 5, cell * 5), PREVIEW_BG)
         for i, (_, img) in enumerate(images):
             big = img.resize((img.width * scale, img.height * scale), Image.NEAREST)
             x, y = (i % 5) * cell + 8, (i // 5) * cell + 8

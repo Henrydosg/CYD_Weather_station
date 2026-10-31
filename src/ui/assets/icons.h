@@ -13,6 +13,16 @@ extern const Icon kIconDrizzle;  // 72x72
 extern const Icon kIconRain;  // 72x72
 extern const Icon kIconSnow;  // 72x72
 extern const Icon kIconThunder;  // 72x72
+extern const Icon kIconClearDaySmall;  // 30x30
+extern const Icon kIconClearNightSmall;  // 30x30
+extern const Icon kIconPartlyDaySmall;  // 30x30
+extern const Icon kIconPartlyNightSmall;  // 30x30
+extern const Icon kIconCloudySmall;  // 30x30
+extern const Icon kIconFogSmall;  // 30x30
+extern const Icon kIconDrizzleSmall;  // 30x30
+extern const Icon kIconRainSmall;  // 30x30
+extern const Icon kIconSnowSmall;  // 30x30
+extern const Icon kIconThunderSmall;  // 30x30
 extern const Icon kIconGear;  // 16x16
 extern const Icon kIconFeels;  // 16x16
 extern const Icon kIconHumidity;  // 16x16

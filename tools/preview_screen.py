@@ -1,12 +1,15 @@
-"""Render PC previews of the main screen for several weather states.
+"""Render PC previews of the UI screens (navy theme).
 
-Mirrors src/ui/screen_main.cpp, analog_clock.cpp and draw_utils.cpp (same
-layout, Roboto fonts and icons from gen_icons.py), reads the colours from
-src/ui/theme.h, and quantises to RGB565 like the panel. Panel gamma and
-viewing angle are not simulated.
+Mirrors the layout constants of src/ui/screen_*.cpp with the same Roboto fonts
+and the icons from gen_icons.py, reads the colours from src/ui/theme.h and
+quantises to RGB565 like the panel. Sample data only; panel gamma and viewing
+angle are not simulated. Keep it in sync when a screen's layout changes.
 
 Usage (from the project root, needs Pillow):
-    python tools/preview_screen.py --out preview.png [--scale 2] [--lang en]
+    python tools/preview_screen.py --out preview.png [--scale 2] [--screen main|setup|wifi]
+      main:  dashboard (two cities) and the 24 h graph
+      setup: settings, city manager, action panel, search keyboard, search results
+      wifi:  WiFi list, password keyboard, connect error
 """
 
 import argparse
@@ -25,27 +28,23 @@ FONT_DIR = Path("C:/Windows/Fonts")
 W, H = 320, 240
 SUP = 4  # supersampling for anti-aliased shapes
 CARD_RADIUS = 10
-# ui::drawShadow (draw_utils.h) and the clock face shadow (analog_clock.cpp)
-SHADOW_SPREAD, SHADOW_OFFSET_Y, SHADOW_ALPHA = 6, 3, 36
-FACE_SHADOW_SPREAD, FACE_SHADOW_OFFSET_Y = 4, 2
 
-TEXT = {
-    "vi": dict(city="TP. Hồ Chí Minh", feels="Cảm giác", hum="Độ ẩm", wind="Gió",
-               pres="Áp suất", age="5 phút trước", tap="Chạm để làm mới",
-               date="Thứ Bảy, 31/10", pill="VI"),
-    "en": dict(city="Ho Chi Minh City", feels="Feels like", hum="Humidity", wind="Wind",
-               pres="Pressure", age="5 min ago", tap="Tap to refresh",
-               date="Saturday, 31/10", pill="EN"),
+
+def font(name, size):
+    return ImageFont.truetype(str(FONT_DIR / name), size)
+
+
+F = {
+    "tiny": font("Roboto-Regular.ttf", 12), "tinyBold": font("Roboto-Medium.ttf", 12),
+    "label": font("Roboto-Regular.ttf", 13), "small": font("Roboto-Regular.ttf", 15),
+    "medium": font("Roboto-Medium.ttf", 20), "big": font("Roboto-Medium.ttf", 40),
 }
-# (icon, temperature, description vi, description en)
-STATES = [
-    ("kIconClearDay", 33, "Trời quang", "Clear sky"),
-    ("kIconPartlyDay", 31, "Mây rải rác", "Scattered clouds"),
-    ("kIconCloudy", 29, "Mây cụm", "Broken clouds"),
-    ("kIconClearNight", 26, "Trời quang", "Clear sky"),
-    ("kIconRain", 21, "Mưa nhẹ", "Light rain"),
-    ("kIconThunder", 37, "Dông", "Thunderstorm"),
-]
+
+
+def q565(c):
+    """What the panel shows for an 8-bit colour: RGB565, expanded back to 8 bits."""
+    r, g, b = c[0] >> 3, c[1] >> 2, c[2] >> 3
+    return ((r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2))
 
 
 def load_colours():
@@ -55,174 +54,42 @@ def load_colours():
     return {n: q565((int(r), int(g), int(b))) for n, r, g, b in re.findall(pat, hdr + src)}
 
 
-def q565(c):
-    """What the panel shows for an 8-bit colour: RGB565, expanded back to 8 bits."""
-    r, g, b = c[0] >> 3, c[1] >> 2, c[2] >> 3
-    return ((r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2))
+C = load_colours()
+ICON_FN = dict(gen_icons.WEATHER_ICONS)
+_icons = {}
+
+
+def icon(name, small=False):
+    key = (name, small)
+    if key not in _icons:
+        _icons[key] = gen_icons.render(ICON_FN[name], gen_icons.BASE, 30 if small else None)
+    return _icons[key]
+
+
+def new_screen():
+    img = Image.new("RGB", (W, H), C["Background"])
+    return img, ImageDraw.Draw(img)
 
 
 def rrect(img, box, r, fill):
-    x0, y0, x1, y1 = box
+    x0, y0, x1, y1 = [int(v) for v in box]
     w, h = x1 - x0 + 1, y1 - y0 + 1
     m = Image.new("L", (w * SUP, h * SUP), 0)
     ImageDraw.Draw(m).rounded_rectangle((0, 0, w * SUP - 1, h * SUP - 1), r * SUP, fill=255)
     img.paste(Image.new("RGB", (w, h), fill), (x0, y0), m.resize((w, h), Image.LANCZOS))
 
 
-def shadow_color(c, ring, spread):
-    k = spread + 1 - ring
-    alpha = SHADOW_ALPHA * k * k // ((spread + 1) * (spread + 1))
-    return q565(tuple(round(b + (i - b) * alpha / 255) for i, b in zip(c["Ink"], c["Background"])))
+def card(img, x, y, w, h, r=CARD_RADIUS):
+    """ui::drawCard: border-coloured rounded rect, background inset by 1 px."""
+    rrect(img, (x, y, x + w - 1, y + h - 1), r, C["CardBorder"])
+    rrect(img, (x + 1, y + 1, x + w - 2, y + h - 2), r - 1, C["Background"])
 
 
-def shadow(img, c, x, y, w, h):
-    """ui::drawShadow: rings from the outside in, shifted down."""
-    for i in range(SHADOW_SPREAD, 0, -1):
-        rrect(img, (x - i, y + SHADOW_OFFSET_Y - i, x + w - 1 + i, y + SHADOW_OFFSET_Y + h - 1 + i),
-              CARD_RADIUS + i, shadow_color(c, i, SHADOW_SPREAD))
-
-
-def card(img, c, x, y, w, h):
-    """ui::drawCardBody: border-coloured rounded rect, background inset by 1 px."""
-    rrect(img, (x, y, x + w - 1, y + h - 1), CARD_RADIUS, c["CardBorder"])
-    rrect(img, (x + 1, y + 1, x + w - 2, y + h - 2), CARD_RADIUS - 1, c["Background"])
-
-
-def temp_color(c, t):
-    return c["HotColor"] if t >= 36 else c["WarmColor"] if t >= 33 else (
-        c["CoolColor"] if t <= 22 else c["Ink"])
-
-
-def draw_clock(img, c, fonts, hh=10, mm=8, ss=30):
-    fx, fy, size = 178, 30, 136
-    n, cc = size * SUP, size * SUP / 2
-    face = Image.new("RGB", (n, n), c["Background"])
-    d = ImageDraw.Draw(face)
-    for i in range(FACE_SHADOW_SPREAD, 0, -1):
-        r, oy = (66 + i) * SUP, FACE_SHADOW_OFFSET_Y * SUP
-        d.ellipse((cc - r, cc + oy - r, cc + r, cc + oy + r),
-                  fill=shadow_color(c, i, FACE_SHADOW_SPREAD))
-    d.ellipse((cc - 66 * SUP, cc - 66 * SUP, cc + 66 * SUP, cc + 66 * SUP), fill=c["Accent"])
-    d.ellipse((cc - 64 * SUP, cc - 64 * SUP, cc + 64 * SUP, cc + 64 * SUP), fill=c["Background"])
-    for i in range(60):
-        a = math.radians(i * 6)
-        sx, sy = math.sin(a), -math.cos(a)
-        if i % 5 == 0:
-            quarter = i % 15 == 0
-            r0 = 50 if quarter else 54
-            d.line((cc + sx * r0 * SUP, cc + sy * r0 * SUP, cc + sx * 60 * SUP, cc + sy * 60 * SUP),
-                   fill=c["Ink"] if quarter else c["ClockMinor"], width=(4 if quarter else 2) * SUP)
-        else:
-            px, py, r = cc + sx * 59 * SUP, cc + sy * 59 * SUP, 0.5 * SUP
-            d.ellipse((px - r, py - r, px + r, py + r), fill=c["ClockMinor"])
-
-    def hand(deg, length, tail, width, color):
-        a = math.radians(deg)
-        dx, dy = math.sin(a), -math.cos(a)
-        d.line((cc - dx * tail * SUP, cc - dy * tail * SUP, cc + dx * length * SUP,
-                cc + dy * length * SUP), fill=color, width=round(width * SUP))
-
-    hand(((hh % 12) + mm / 60) * 30, 32, 0, 6, c["Ink"])
-    hand((mm + ss / 60) * 6, 48, 0, 4, c["Ink"])
-    hand(ss * 6, 55, 12, 2, c["Highlight"])
-    d.ellipse((cc - 4 * SUP, cc - 4 * SUP, cc + 4 * SUP, cc + 4 * SUP), fill=c["Highlight"])
-    d.ellipse((cc - SUP, cc - SUP, cc + SUP, cc + SUP), fill=c["Background"])
-    img.paste(face.resize((size, size), Image.LANCZOS), (fx, fy))
-    ImageDraw.Draw(img).text((fx + size / 2, fy + size / 2 - 40), "12", font=fonts["small"],
-                             fill=c["ClockMinor"], anchor="mm")
-
-
-def render(c, icons, fonts, lang, state):
-    t = TEXT[lang]
-    icon, temp, desc_vi, desc_en = state
-    img = Image.new("RGB", (W, H), c["Background"])
-    d = ImageDraw.Draw(img)
-
-    # Header: city, language pill, gear, signal bars (3 of 4 lit)
-    d.text((8, 14), t["city"], font=fonts["medium"], fill=c["Ink"], anchor="lm")
-    bars_x = 320 - 6 - 4 * 5 + 2
-    gear_x = bars_x - 10 - 16
-    pill_x = gear_x - 10 - 28
-    rrect(img, (pill_x, 5, pill_x + 27, 22), 9, c["Accent"])
-    d = ImageDraw.Draw(img)
-    d.text((pill_x + 14, 14), t["pill"], font=fonts["small"], fill=c["OnAccent"], anchor="mm")
-    img.paste(icons["kIconGear"], (gear_x, 6), icons["kIconGear"])
-    for i in range(4):
-        h = 4 + i * 3
-        d.rectangle((bars_x + i * 5, 20 - h, bars_x + i * 5 + 2, 19),
-                    fill=c["Ok"] if i < 3 else c["BarOff"])
-
-    # Card shadows first (details, then weather), then the bodies
-    shadow(img, c, 6, 138, 166, 82)
-    shadow(img, c, 6, 30, 166, 104)
-    shadow(img, c, 180, 168, 132, 50)
-
-    # Weather card
-    card(img, c, 6, 30, 166, 104)
-    img.paste(icons[icon], (10, 34), icons[icon])
-    d = ImageDraw.Draw(img)
-    d.text((164, 70), f"{temp}°", font=fonts["temp"], fill=temp_color(c, temp), anchor="rm")
-    d.text((14, 120), desc_vi if lang == "vi" else desc_en, font=fonts["medium"],
-           fill=c["Accent"], anchor="lm")
-
-    # Details card
-    card(img, c, 6, 138, 166, 82)
-    d = ImageDraw.Draw(img)
-    rows = [("kIconFeels", t["feels"], "39°", temp_color(c, 39)),
-            ("kIconHumidity", t["hum"], "74%", c["Ink"]),
-            ("kIconWind", t["wind"], "11 km/h", c["Ink"]),
-            ("kIconPressure", t["pres"], "1009 hPa", c["Ink"])]
-    for i, (ic, label, val, vc) in enumerate(rows):
-        top = 139 + i * 20
-        mid = top + 10
-        if i > 0:
-            d.line((14, top, 14 + 149, top), fill=c["Line"])
-        img.paste(icons[ic], (14, mid - 8), icons[ic])
-        d.text((38, mid), label, font=fonts["small"], fill=c["Muted"], anchor="lm")
-        d.text((164, mid), val, font=fonts["small"], fill=vc, anchor="rm")
-        if i == 1:
-            bx = round(38 + d.textlength(label, font=fonts["small"]) + 6)
-            rrect(img, (bx, mid - 2, bx + 29, mid + 1), 2, c["Track"])
-            rrect(img, (bx, mid - 2, bx + 22, mid + 1), 2, c["Accent"])
-            d = ImageDraw.Draw(img)
-
-    draw_clock(img, c, fonts)
-
-    # Time card: digital readout and date
-    card(img, c, 180, 168, 132, 50)
-    d = ImageDraw.Draw(img)
-    d.text((246, 184), "10:08:30", font=fonts["clock"], fill=c["Ink"], anchor="mm")
-    d.text((246, 207), t["date"], font=fonts["small"], fill=c["Accent"], anchor="mm")
-
-    # Footer
-    d.text((8, 231), t["age"], font=fonts["small"], fill=c["Muted"], anchor="lm")
-    d.text((312, 231), t["tap"], font=fonts["small"], fill=c["Muted"], anchor="rm")
-
-    px = img.load()
-    for y in range(H):
-        for x in range(W):
-            px[x, y] = q565(px[x, y])
-    return img
-
-
-# ---------------------------------------------------------------------------
-# WiFi screens (screen_wifi.cpp, screen_keyboard.cpp, screen_connect.cpp)
-# ---------------------------------------------------------------------------
-
-WIFI_TEXT = {
-    "vi": dict(title="WiFi", rescan="Quét lại", connected="Đã kết nối: {}", saved="Đã lưu",
-               prev="Trước", next="Sau", space="dấu cách", cancel="Huỷ", connect="Kết nối",
-               show="Hiện", failed=("Sai mật khẩu hoặc", "không kết nối được"),
-               retry="Nhập lại", forget="Quên mạng"),
-    "en": dict(title="WiFi", rescan="Rescan", connected="Connected: {}", saved="Saved",
-               prev="Prev", next="Next", space="space", cancel="Cancel", connect="Connect",
-               show="Show", failed=("Wrong password or", "network unreachable"),
-               retry="Try again", forget="Forget"),
-}
-# (ssid, rssi, secured, saved, connected)
-NETWORKS = [("NhaRieng", -50, True, True, True), ("Cafe_Sua_Da", -62, False, True, False),
-            ("VNPT-5G-A1B2", -68, True, False, False), ("Viettel_Home", -80, True, False, False)]
-KEY_BG = (236, 243, 252)
+def pill(img, x, y, w, h, label, fill, fg, outline, fnt="small"):
+    rrect(img, (x, y, x + w - 1, y + h - 1), h // 2, fill)
+    if outline:
+        rrect(img, (x + 1, y + 1, x + w - 2, y + h - 2), h // 2 - 1, C["Background"])
+    ImageDraw.Draw(img).text((x + w / 2, y + h / 2), label, font=F[fnt], fill=fg, anchor="mm")
 
 
 def chevron(d, cx, cy, right, color):
@@ -230,79 +97,204 @@ def chevron(d, cx, cy, right, color):
     d.line((cx - s * 2, cy - 5, cx + s * 2, cy, cx - s * 2, cy + 5), fill=color, width=2)
 
 
-def back_header(img, c, fonts, title):
+def bars(d, x, bottom, lit, on):
+    for i in range(4):
+        h = 4 + i * 3
+        d.rectangle((x + i * 5, bottom - h, x + i * 5 + 2, bottom - 1),
+                    fill=on if i < lit else C["BarOff"])
+
+
+def back_header(img, title):
     d = ImageDraw.Draw(img)
-    chevron(d, 14, 18, False, c["Ink"])
-    d.text((26, 18), title, font=fonts["medium"], fill=c["Ink"], anchor="lm")
+    chevron(d, 14, 18, False, C["Ink"])
+    d.text((26, 18), title, font=F["medium"], fill=C["Ink"], anchor="lm")
 
 
-def quantise(img):
-    px = img.load()
-    for y in range(H):
-        for x in range(W):
-            px[x, y] = q565(px[x, y])
+def paste(img, im, x, y):
+    img.paste(im, (int(x), int(y)), im)
+
+
+def temp_color(t):
+    return C["HotColor"] if t >= 36 else C["WarmColor"] if t >= 33 else (
+        C["Low"] if t <= 22 else C["Temp"])
+
+
+def level_color(level):
+    return [C["Ok"], C["Warn"], C["Alert"], C["Error"], C["Severe"], C["Danger"]][min(level, 5)]
+
+
+# ---------------------------------------------------------------------------
+# Sample data
+# ---------------------------------------------------------------------------
+
+CITIES = [("TP. Hồ Chí Minh", "Việt Nam"), ("Hà Nội", "Việt Nam"), ("Hải Phòng", "Việt Nam"),
+          ("Đà Nẵng", "Việt Nam"), ("Đà Lạt", "Lâm Đồng, Việt Nam"),
+          ("Calgary", "Alberta, Canada"), ("Melbourne", "Victoria, Úc")]
+WEATHER = {
+    0: dict(time="14:35", date="T7, 31/10/2026", desc="Mây rải rác", icon="kIconPartlyDay", temp=31,
+            feels=37, rows=["05:42", "17:39", "74%", "11 km/h ĐN", "1009 hPa", "60%"],
+            uv=(8, "Rất cao", 3), aqi=(54, "Trung bình", 1),
+            days=[("T7", "31/10", "kIconPartlyDay", 33, 25), ("CN", "1/11", "kIconRain", 31, 25),
+                  ("T2", "2/11", "kIconThunder", 30, 24), ("T3", "3/11", "kIconPartlyDay", 32, 25),
+                  ("T4", "4/11", "kIconClearDay", 33, 24), ("T5", "5/11", "kIconDrizzle", 31, 25),
+                  ("T6", "6/11", "kIconCloudy", 32, 25)]),
+    5: dict(time="01:35", date="T7, 31/10/2026", desc="Tuyết nhẹ", icon="kIconSnow", temp=-3,
+            feels=-9, rows=["08:12", "18:04", "81%", "24 km/h TB", "1021 hPa", "90%"],
+            uv=(0, "Thấp", 0), aqi=(18, "Tốt", 0),
+            days=[("T7", "31/10", "kIconSnow", 2, -6), ("CN", "1/11", "kIconCloudy", 4, -5),
+                  ("T2", "2/11", "kIconPartlyDay", 7, -3), ("T3", "3/11", "kIconClearDay", 9, -2),
+                  ("T4", "4/11", "kIconPartlyDay", 6, -4), ("T5", "5/11", "kIconSnow", 1, -7),
+                  ("T6", "6/11", "kIconCloudy", 3, -6)]),
+}
+HOURLY = [(15, 32, "kIconPartlyDay", 20), (18, 30, "kIconRain", 60), (21, 28, "kIconPartlyNight", 30),
+          (0, 27, "kIconClearNight", 10), (3, 26, "kIconClearNight", 5), (6, 26, "kIconPartlyDay", 10),
+          (9, 29, "kIconClearDay", 15), (12, 31, "kIconPartlyDay", 40)]
+LABELS = ["Mặt trời mọc", "Mặt trời lặn", "Độ ẩm", "Gió", "Áp suất", "Mây", "Chỉ số UV", "AQI"]
+
+
+# ---------------------------------------------------------------------------
+# Screens
+# ---------------------------------------------------------------------------
+
+def dashboard(city):
+    """screen_dashboard.cpp"""
+    img, d = new_screen()
+    name, region = CITIES[city]
+    w = WEATHER[city]
+    d.text((8, 12), name, font=F["medium"], fill=C["Ink"], anchor="lm")
+    d.text((8, 31), region, font=F["tiny"], fill=C["Muted"], anchor="lm")
+    d.text((288, 12), w["time"], font=F["medium"], fill=C["Highlight"], anchor="rm")
+    d.text((312, 31), w["date"], font=F["tiny"], fill=C["Muted"], anchor="rm")
+    bars(d, 294, 18, 3, C["Ok"])
+    d.line((6, 40, 313, 40), fill=C["Line"])
+    n = len(CITIES)
+    x0 = 160 - (n - 1) * 10 // 2
+    d.rectangle((x0 - 6, 37, x0 + (n - 1) * 10 + 6, 43), fill=C["Background"])
+    for i in range(n):
+        r = 3 if i == city else 2
+        d.ellipse((x0 + i * 10 - r, 40 - r, x0 + i * 10 + r, 40 + r),
+                  fill=C["Highlight"] if i == city else C["CardBorder"])
+
+    d.text((76, 54), w["desc"], font=F["medium"], fill=C["Description"], anchor="mm")
+    paste(img, icon(w["icon"]), 2, 66)
+    d.text((112, 98), f"{w['temp']}°", font=F["big"], fill=temp_color(w["temp"]), anchor="mm")
+    d.text((112, 130), f"Cảm giác {w['feels']}°", font=F["tiny"], fill=C["Muted"], anchor="mm")
+
+    values = w["rows"] + [f"{w['uv'][0]} {w['uv'][1]}", f"{w['aqi'][0]} {w['aqi'][1]}"]
+    colors = [C["Ink"]] * 6 + [level_color(w["uv"][2]), level_color(w["aqi"][2])]
+    for i, (lab, val, col) in enumerate(zip(LABELS, values, colors)):
+        y = 50 + i * 14
+        d.text((230, y), lab + ":", font=F["label"], fill=C["Label"], anchor="rm")
+        d.text((234, y), val, font=F["label"], fill=col, anchor="lm")
+
+    d.line((6, 158, 313, 158), fill=C["Line"])
+    colw = 308 // 7
+    for i, (dn, dt, ic, hi, lo) in enumerate(w["days"]):
+        x = 6 + i * colw
+        cx = x + colw // 2
+        if i == 0:
+            rrect(img, (x + 1, 161, x + colw - 2, 237), 6, C["Track"])
+            d = ImageDraw.Draw(img)
+        d.text((cx, 169), dn, font=F["tinyBold"], fill=C["Ink"], anchor="mm")
+        d.text((cx, 182), dt, font=F["tiny"], fill=C["Muted"], anchor="mm")
+        paste(img, icon(ic, True), cx - 15, 189)
+        d.text((cx, 222), f"{hi}°", font=F["tinyBold"], fill=C["High"], anchor="mm")
+        d.text((cx, 234), f"{lo}°", font=F["tinyBold"], fill=C["Low"], anchor="mm")
     return img
 
 
-def render_wifi(c, fonts, lang):
-    t = WIFI_TEXT[lang]
-    img = Image.new("RGB", (W, H), c["Background"])
-    back_header(img, c, fonts, t["title"])
-    rx = 320 - 8 - 92
-    rrect(img, (rx, 4, rx + 91, 31), 14, c["Accent"])
-    rrect(img, (rx + 1, 5, rx + 90, 30), 13, c["Background"])
+def graph():
+    """screen_graph.cpp"""
+    img, d = new_screen()
+    d.text((8, 12), CITIES[0][0], font=F["medium"], fill=C["Ink"], anchor="lm")
+    d.text((8, 31), "Nhiệt độ 24 giờ tới", font=F["tiny"], fill=C["Muted"], anchor="lm")
+    d.text((312, 12), "14:35", font=F["medium"], fill=C["Highlight"], anchor="rm")
+    d.line((6, 40, 313, 40), fill=C["Line"])
+    temps = [p[1] for p in HOURLY]
+    lo, span = min(temps), max(max(temps) - min(temps), 1)
+    xs = [22 + i * 39 for i in range(len(HOURLY))]
+    ys = [176 - round((t - lo) * (176 - 108) / span) for t in temps]
+    layer = Image.new("RGBA", (W * SUP, H * SUP), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    ld.line([(x * SUP, y * SUP) for x, y in zip(xs, ys)], fill=C["Graph"] + (255,), width=2 * SUP)
+    for x, y in zip(xs, ys):
+        ld.ellipse(((x - 3) * SUP, (y - 3) * SUP, (x + 3) * SUP, (y + 3) * SUP), fill=C["Graph"] + (255,))
+    img.paste(layer.resize((W, H), Image.LANCZOS), (0, 0), layer.resize((W, H), Image.LANCZOS))
     d = ImageDraw.Draw(img)
-    d.text((rx + 46, 18), t["rescan"], font=fonts["small"], fill=c["Accent"], anchor="mm")
-    d.text((10, 46), t["connected"].format("NhaRieng - 192.168.1.23"), font=fonts["small"],
-           fill=c["Ok"], anchor="lm")
-
-    top0 = 60
-    shadow(img, c, 6, top0, 308, 144)
-    card(img, c, 6, top0, 308, 144)
-    d = ImageDraw.Draw(img)
-    for i, (ssid, rssi, secured, saved, connected) in enumerate(NETWORKS):
-        top, mid = top0 + i * 36, top0 + i * 36 + 18
-        if i > 0:
-            d.line((16, top, 303, top), fill=c["Line"])
-        lit = 1 + sum(rssi >= lvl for lvl in (-75, -65, -55))
-        for b in range(4):
-            h = 4 + b * 3
-            d.rectangle((18 + b * 5, mid + 7 - h, 20 + b * 5, mid + 6),
-                        fill=c["Accent"] if b < lit else c["BarOff"])
-        d.text((46, mid), ssid, font=fonts["medium"], fill=c["Ink"], anchor="lm")
-        if saved and not connected:
-            d.text((302, mid), t["saved"], font=fonts["small"], fill=c["Muted"], anchor="rm")
-            continue
-        if secured:
-            d.rounded_rectangle((262, mid - 2, 272, mid + 5), 2, fill=c["Muted"])
-            d.arc((263, mid - 7, 271, mid + 1), 180, 360, fill=c["Muted"], width=2)
-        if connected:
-            d.line((285, mid, 289, mid + 4, 296, mid - 4), fill=c["Ok"], width=2)
-        else:
-            chevron(d, 294, mid, True, c["Muted"])
-
-    for x0, label, right in ((6, t["prev"], False), (214, t["next"], True)):
-        rrect(img, (x0, 210, x0 + 99, 237), 14, c["Track"])
+    for (hour, t, ic, rain), x, y in zip(HOURLY, xs, ys):
+        paste(img, icon(ic, True), x - 15, y - 36)
         d = ImageDraw.Draw(img)
-        fg = c["ClockMinor"] if not right else c["Ink"]  # first page: Prev disabled
-        d.text((x0 + 50, 224), label, font=fonts["small"], fill=fg, anchor="mm")
-        chevron(d, x0 + 84 if right else x0 + 16, 224, right, fg)
-    d.text((160, 224), "1 / 2", font=fonts["small"], fill=c["Muted"], anchor="mm")
-    return quantise(img)
+        d.text((x, y - 44), f"{t}°", font=F["tinyBold"], fill=C["Temp"], anchor="mm")
+        d.text((x, y - 57), f"{hour}h", font=F["tiny"], fill=C["Muted"], anchor="mm")
+        bh = rain * 30 // 100
+        if bh:
+            d.rectangle((x - 6, 226 - bh, x + 5, 225), fill=C["RainBar"])
+        d.text((x, 234), f"{rain}%", font=F["tiny"], fill=C["Low"], anchor="mm")
+    d.line((6, 194, 313, 194), fill=C["Line"])
+    d.text((8, 202), "Khả năng mưa", font=F["tiny"], fill=C["Muted"], anchor="lm")
+    return img
 
 
-def render_keyboard(c, fonts, lang, layout):
-    t = WIFI_TEXT[lang]
-    img = Image.new("RGB", (W, H), c["Background"])
-    back_header(img, c, fonts, "VNPT-5G-A1B2")
-    rrect(img, (6, 34, 313, 67), 10, c["Accent"])
-    rrect(img, (7, 35, 312, 66), 9, c["Background"])
+def settings():
+    """screen_settings.cpp"""
+    img, _ = new_screen()
+    back_header(img, "Cài đặt")
+    rows = [("Thành phố", "7 / 8", C["Highlight"]), ("Đổi thành phố sau", "20 giây", C["Highlight"]),
+            ("Ngôn ngữ", "Tiếng Việt", C["Muted"]), ("Hiệu chuẩn cảm ứng", "", C["Muted"]),
+            ("WiFi", "NhaRieng", C["Ok"])]
+    for i, (lab, val, col) in enumerate(rows):
+        top = 40 + i * 39
+        mid = top + 17
+        card(img, 6, top, 308, 34)
+        d = ImageDraw.Draw(img)
+        d.text((18, mid), lab, font=F["small"], fill=C["Ink"], anchor="lm")
+        d.text((288, mid), val, font=F["small"], fill=col, anchor="rm")
+        chevron(d, 302, mid, True, C["Muted"])
+    return img
+
+
+def cities(panel=False):
+    """screen_cities.cpp"""
+    img, _ = new_screen()
+    back_header(img, f"Thành phố  {len(CITIES)}/8")
+    pill(img, 228, 4, 84, 28, "+ Thêm", C["Accent"], C["Accent"], True)
     d = ImageDraw.Draw(img)
-    pw = "*********"
-    d.text((16, 51), pw, font=fonts["medium"], fill=c["Ink"], anchor="lm")
-    tw = d.textlength(pw, font=fonts["medium"])
-    d.rectangle((17 + tw, 41, 18 + tw, 60), fill=c["Accent"])
-    d.text((304, 51), t["show"], font=fonts["small"], fill=c["Accent"], anchor="rm")
+    for i, (name, region) in enumerate(CITIES):
+        top = 40 + i * 25
+        mid = top + 12
+        if panel and i == 5:
+            rrect(img, (4, top + 1, 315, top + 23), 6, C["Track"])
+            d = ImageDraw.Draw(img)
+        if i > 0:
+            d.line((12, top, 307, top), fill=C["Line"])
+        d.text((16, mid), str(i + 1), font=F["tinyBold"], fill=C["Muted"], anchor="mm")
+        d.text((32, mid), name, font=F["small"], fill=C["Ink"], anchor="lm")
+        d.text((290, mid), region.split(", ")[-1], font=F["tiny"], fill=C["Muted"], anchor="rm")
+        chevron(d, 304, mid, True, C["Muted"])
+    if panel:
+        card(img, 30, 60, 260, 130)
+        d = ImageDraw.Draw(img)
+        d.text((160, 82), "Calgary", font=F["medium"], fill=C["Ink"], anchor="mm")
+        d.text((160, 102), "Alberta, Canada", font=F["tiny"], fill=C["Muted"], anchor="mm")
+        for i, (lab, fill) in enumerate((("Lên", C["Track"]), ("Xuống", C["Track"]), ("Xoá", C["Danger"]))):
+            pill(img, 44 + i * 80, 120, 72, 32, lab, fill, C["OnAccent"], False)
+        ImageDraw.Draw(img).text((160, 172), "Đóng", font=F["small"], fill=C["Accent"], anchor="mm")
+    return img
+
+
+def keyboard(title, text, masked, submit, layout="lower"):
+    """screen_keyboard.cpp"""
+    img, _ = new_screen()
+    back_header(img, title)
+    rrect(img, (6, 34, 313, 67), 10, C["Accent"])
+    rrect(img, (7, 35, 312, 66), 9, C["Background"])
+    d = ImageDraw.Draw(img)
+    shown = "*" * len(text) if masked else text
+    d.text((16, 51), shown, font=F["medium"], fill=C["Ink"], anchor="lm")
+    tw = d.textlength(shown, font=F["medium"])
+    d.rectangle((17 + tw, 41, 18 + tw, 60), fill=C["Accent"])
+    if masked:
+        d.text((304, 51), "Hiện", font=F["small"], fill=C["Accent"], anchor="rm")
 
     kw, kh, gap, y0 = 29, 36, 3, 74
     full = 10 * kw + 9 * gap
@@ -313,66 +305,122 @@ def render_keyboard(c, fonts, lang, layout):
     if layout == "upper":
         rows = [r.upper() for r in rows]
 
-    def key(x, y, w, label, accent=False, font="medium"):
-        rrect(img, (x, y, x + w - 1, y + kh - 1), 6, c["Accent"] if accent else KEY_BG)
-        ImageDraw.Draw(img).text((x + w / 2, y + kh / 2), label, font=fonts[font],
-                                 fill=c["OnAccent"] if accent else c["Ink"], anchor="mm")
-
-    def shift_icon(x, w, y, color):
-        cx, cy = x + w / 2, y + kh / 2
-        ImageDraw.Draw(img).line((cx - 4, cy + 7, cx - 4, cy, cx - 8, cy, cx, cy - 8, cx + 8, cy,
-                                  cx + 4, cy, cx + 4, cy + 7, cx - 4, cy + 7), fill=color, width=2)
-
-    def backspace_icon(x, w, y, color):
-        cx, cy = x + w / 2, y + kh / 2
-        dd = ImageDraw.Draw(img)
-        dd.line((cx - 10, cy, cx - 4, cy - 7, cx + 10, cy - 7, cx + 10, cy + 7, cx - 4, cy + 7,
-                 cx - 10, cy), fill=color, width=2)
-        dd.line((cx - 1, cy - 3, cx + 5, cy + 3), fill=color, width=2)
-        dd.line((cx - 1, cy + 3, cx + 5, cy - 3), fill=color, width=2)
+    def key(x, y, w, label, accent=False, fnt="medium"):
+        rrect(img, (x, y, x + w - 1, y + kh - 1), 6, C["Accent"] if accent else C["Track"])
+        ImageDraw.Draw(img).text((x + w / 2, y + kh / 2), label, font=F[fnt],
+                                 fill=C["OnAccent"] if accent else C["Ink"], anchor="mm")
 
     for r in range(2):
         first = x0 + (10 - len(rows[r])) * (kw + gap) // 2
         for i, ch in enumerate(rows[r]):
             key(first + i * (kw + gap), y0 + r * (kh + gap), kw, ch)
     y3 = y0 + 2 * (kh + gap)
+    cy = y3 + kh / 2
     if layout == "symbols":
         first = x0
     else:
         first = x0 + wide + gap
         key(x0, y3, wide, "", accent=layout == "upper")
-        shift_icon(x0, wide, y3, c["OnAccent"] if layout == "upper" else c["Ink"])
+        cx = x0 + wide / 2
+        col = C["OnAccent"] if layout == "upper" else C["Ink"]
+        ImageDraw.Draw(img).line((cx - 4, cy + 7, cx - 4, cy, cx - 8, cy, cx, cy - 8, cx + 8, cy,
+                                  cx + 4, cy, cx + 4, cy + 7, cx - 4, cy + 7), fill=col, width=2)
     for i, ch in enumerate(rows[2]):
         key(first + i * (kw + gap), y3, kw, ch)
     bx = first + len(rows[2]) * (kw + gap)
     key(bx, y3, x0 + full - bx, "")
-    backspace_icon(bx, x0 + full - bx, y3, c["Ink"])
+    cx = bx + (x0 + full - bx) / 2
+    dd = ImageDraw.Draw(img)
+    dd.line((cx - 10, cy, cx - 4, cy - 7, cx + 10, cy - 7, cx + 10, cy + 7, cx - 4, cy + 7, cx - 10, cy),
+            fill=C["Ink"], width=2)
+    dd.line((cx - 1, cy - 3, cx + 5, cy + 3), fill=C["Ink"], width=2)
+    dd.line((cx - 1, cy + 3, cx + 5, cy - 3), fill=C["Ink"], width=2)
     y4 = y3 + kh + gap
-    key(x0, y4, wide, "abc" if layout == "symbols" else "123", font="small")
+    key(x0, y4, wide, "abc" if layout == "symbols" else "123", fnt="small")
     sx = x0 + wide + gap
-    key(sx, y4, 118, t["space"], font="small")
-    key(sx + 121, y4, 48, t["cancel"], font="small")
-    cx = sx + 121 + 51
-    key(cx, y4, x0 + full - cx, t["connect"], accent=True, font="small")
-    return quantise(img)
+    key(sx, y4, 118, "dấu cách", fnt="small")
+    key(sx + 121, y4, 48, "Huỷ", fnt="small")
+    key(sx + 172, y4, x0 + full - sx - 172, submit, accent=True, fnt="small")
+    return img
 
 
-def render_connect_failed(c, fonts, lang):
-    t = WIFI_TEXT[lang]
-    img = Image.new("RGB", (W, H), c["Background"])
-    back_header(img, c, fonts, "VNPT-5G-A1B2")
-    shadow(img, c, 30, 70, 260, 110)
-    card(img, c, 30, 70, 260, 110)
+def search_results():
+    """screen_search.cpp"""
+    img, _ = new_screen()
+    back_header(img, "Kết quả: melbourne")
+    res = [("Melbourne", "Victoria, Úc", "5,0 tr. dân", True), ("Melbourne", "Florida, Mỹ", "84 nghìn dân", True),
+           ("Melbourne", "Iowa, Mỹ", "830 dân", True), ("Melbourne", "Kentucky, Mỹ", "440 dân", True),
+           ("Melbourne", "Arkansas, Mỹ", "1,8 nghìn dân", True)]
+    for i, (name, region, pop, add) in enumerate(res):
+        top = 42 + i * 39
+        mid = top + 17
+        card(img, 6, top, 308, 35)
+        d = ImageDraw.Draw(img)
+        d.text((16, mid - 8), name, font=F["small"], fill=C["Ink"], anchor="lm")
+        d.text((16, mid + 9), region, font=F["tiny"], fill=C["Muted"], anchor="lm")
+        d.text((262, mid - 8), pop, font=F["tiny"], fill=C["Muted"], anchor="rm")
+        pill(img, 272, mid - 12, 32, 24, "+", C["Accent"] if add else C["Track"],
+             C["OnAccent"] if add else C["Disabled"], False, "medium")
+    return img
+
+
+def wifi_list():
+    """screen_wifi.cpp"""
+    img, _ = new_screen()
+    back_header(img, "WiFi")
+    pill(img, 220, 4, 92, 28, "Quét lại", C["Accent"], C["Accent"], True)
     d = ImageDraw.Draw(img)
-    d.text((160, 98), t["failed"][0], font=fonts["small"], fill=c["Error"], anchor="mm")
-    d.text((160, 120), t["failed"][1], font=fonts["small"], fill=c["Error"], anchor="mm")
-    rrect(img, (50, 140, 153, 167), 14, c["Accent"])
-    rrect(img, (166, 140, 269, 167), 14, c["Accent"])
-    rrect(img, (167, 141, 268, 166), 13, c["Background"])
+    d.text((10, 46), "Đã kết nối: NhaRieng - 192.168.1.23", font=F["small"], fill=C["Ok"], anchor="lm")
+    card(img, 6, 60, 308, 144)
     d = ImageDraw.Draw(img)
-    d.text((102, 154), t["retry"], font=fonts["small"], fill=c["OnAccent"], anchor="mm")
-    d.text((218, 154), t["forget"], font=fonts["small"], fill=c["Accent"], anchor="mm")
-    return quantise(img)
+    nets = [("NhaRieng", 4, True, False, True), ("Cafe_Sua_Da", 3, False, True, False),
+            ("VNPT-5G-A1B2", 2, True, False, False), ("Viettel_Home", 1, True, False, False)]
+    for i, (ssid, lit, secured, saved, connected) in enumerate(nets):
+        top, mid = 60 + i * 36, 60 + i * 36 + 18
+        if i > 0:
+            d.line((16, top, 303, top), fill=C["Line"])
+        for b in range(4):
+            h = 4 + b * 3
+            d.rectangle((18 + b * 5, mid + 7 - h, 20 + b * 5, mid + 6),
+                        fill=C["Accent"] if b < lit else C["BarOff"])
+        d.text((46, mid), ssid, font=F["medium"], fill=C["Ink"], anchor="lm")
+        if saved and not connected:
+            d.text((302, mid), "Đã lưu", font=F["small"], fill=C["Muted"], anchor="rm")
+            continue
+        if secured:
+            d.rounded_rectangle((262, mid - 2, 272, mid + 5), 2, fill=C["Muted"])
+            d.arc((263, mid - 7, 271, mid + 1), 180, 360, fill=C["Muted"], width=2)
+        if connected:
+            d.line((285, mid, 289, mid + 4, 296, mid - 4), fill=C["Ok"], width=2)
+        else:
+            chevron(d, 294, mid, True, C["Muted"])
+    for x0, label, enabled in ((6, "Trước", False), (214, "Sau", True)):
+        pill(img, x0, 210, 100, 28, label, C["Track"], C["Ink"] if enabled else C["Disabled"], False)
+    ImageDraw.Draw(img).text((160, 224), "1 / 2", font=F["small"], fill=C["Muted"], anchor="mm")
+    return img
+
+
+def connect_failed():
+    """screen_connect.cpp"""
+    img, _ = new_screen()
+    back_header(img, "VNPT-5G-A1B2")
+    card(img, 30, 70, 260, 110)
+    d = ImageDraw.Draw(img)
+    d.text((160, 98), "Sai mật khẩu hoặc", font=F["small"], fill=C["Error"], anchor="mm")
+    d.text((160, 120), "không kết nối được", font=F["small"], fill=C["Error"], anchor="mm")
+    pill(img, 50, 140, 104, 28, "Nhập lại", C["Accent"], C["OnAccent"], False)
+    pill(img, 166, 140, 104, 28, "Quên mạng", C["Accent"], C["Accent"], True)
+    return img
+
+
+SCREENS = {
+    "main": lambda: [dashboard(0), dashboard(5), graph()],
+    "setup": lambda: [settings(), cities(), cities(panel=True),
+                      keyboard("Thêm thành phố", "melbourne", False, "Tìm"), search_results()],
+    "wifi": lambda: [wifi_list(), keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối"),
+                     keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối", "symbols"),
+                     connect_failed()],
+}
 
 
 def main():
@@ -380,35 +428,18 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", required=True, help="PNG sheet to write")
     parser.add_argument("--scale", type=int, default=2, help="pixel scale (nearest neighbour)")
-    parser.add_argument("--lang", choices=["vi", "en"], default="vi")
-    parser.add_argument("--screen", choices=["main", "wifi"], default="main",
-                        help="main: weather states; wifi: WiFi list, keyboard, connect error")
+    parser.add_argument("--screen", choices=sorted(SCREENS), default="main")
     args = parser.parse_args()
 
-    icons = {n: gen_icons.render(f, gen_icons.BASE) for n, f in gen_icons.WEATHER_ICONS}
-    icons.update({n: gen_icons.render(f, gen_icons.MINI_BASE, gen_icons.MINI_SIZE)
-                  for n, f in gen_icons.MINI_ICONS})
-    fonts = {
-        "small": ImageFont.truetype(str(FONT_DIR / "Roboto-Regular.ttf"), 15),
-        "medium": ImageFont.truetype(str(FONT_DIR / "Roboto-Medium.ttf"), 20),
-        "temp": ImageFont.truetype(str(FONT_DIR / "Roboto-Medium.ttf"), 52),
-        "clock": ImageFont.truetype(str(FONT_DIR / "Roboto-Medium.ttf"), 28),
-    }
-    colours = load_colours()
-
-    if args.screen == "wifi":
-        images = [render_wifi(colours, fonts, args.lang)]
-        images += [render_keyboard(colours, fonts, args.lang, lay)
-                   for lay in ("lower", "upper", "symbols")]
-        images.append(render_connect_failed(colours, fonts, args.lang))
-    else:
-        images = [render(colours, icons, fonts, args.lang, st) for st in STATES]
-
+    images = SCREENS[args.screen]()
     cols, sc, pad = 3, args.scale, 12
     rows = math.ceil(len(images) / cols)
-    sheet = Image.new("RGB", (cols * (W * sc + pad) + pad, rows * (H * sc + pad) + pad),
-                      (40, 40, 40))
+    sheet = Image.new("RGB", (cols * (W * sc + pad) + pad, rows * (H * sc + pad) + pad), (40, 40, 40))
     for i, img in enumerate(images):
+        px = img.load()
+        for y in range(H):
+            for x in range(W):
+                px[x, y] = q565(px[x, y])
         x, y = pad + (i % cols) * (W * sc + pad), pad + (i // cols) * (H * sc + pad)
         sheet.paste(img.resize((W * sc, H * sc), Image.NEAREST), (x, y))
     sheet.save(args.out)

@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 #include <string.h>
+#include <time.h>
 
 #include "config.h"
 #include "net/time_sync.h"
@@ -11,7 +12,8 @@
 #include "settings/settings_store.h"
 #include "ui/touch_input.h"
 #include "ui/ui_controller.h"
-#include "weather/openweathermap.h"
+#include "weather/geocoding.h"
+#include "weather/open_meteo.h"
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -26,9 +28,9 @@ static SettingsStore store;
 static Settings settings;
 static WifiManager wifi(secrets::kWifiSsid, secrets::kWifiPassword);
 static TimeSync timeSync;
-static OpenWeatherMapClient weather(secrets::kOwmApiKey);
-
-static constexpr uint32_t kMsPerMinute = 60000UL;
+static OpenMeteoClient weather;
+static GeocodingClient geocoder;
+static uint32_t citiesVersion = 1;
 
 // Network the user asked for; remembered in NVS once the connect succeeds.
 static WifiCredential pendingNetwork{};
@@ -48,53 +50,17 @@ static void onConnectAttempt(ConnectAttempt attempt) {
   }
 }
 
-void setup() {
-  Serial.begin(115200);
-  Serial.println("\n[main] CYD weather station starting");
-
-  settings = store.load();
-  weather.setLanguage(languageCode(settings.language));
-
-  tft.init();
-  touch.begin();
-  touch.setCalibration(settings.touch);
-  ui.begin(settings);
-  wifi.setSavedNetworks(&settings.networks);
-  wifi.begin(millis());
+// Saves the city list and tells the weather client (keeps known data).
+static void citiesChanged() {
+  ++citiesVersion;
+  weather.setCities(settings.cities);
+  store.save(settings);
 }
 
-void loop() {
-  const uint32_t now = millis();
-
-  wifi.update(now);
-  timeSync.update(wifi.isConnected());
-  weather.update(now, wifi.isConnected());
-  onConnectAttempt(wifi.attempt());
-
-  UiState state{};
-  state.wifi = wifi.state();
-  state.rssi = wifi.rssi();
-  state.ssid = wifi.ssid();
-  state.ip = wifi.ip();
-  state.scan = wifi.scanState();
-  state.scanVersion = wifi.scanVersion();
-  state.scanResults = &wifi.scanResults();
-  state.saved = &settings.networks;
-  state.attempt = wifi.attempt();
-  state.fetch = weather.status();
-  state.dataVersion = weather.version();
-  state.data = &weather.data();
-  state.dataAgeMin = weather.hasData() ? (now - weather.lastSuccessMs()) / kMsPerMinute : 0;
-  state.timeValid = timeSync.localTime(state.localTime);
-
-  const UiCommand cmd = ui.update(state, touch.poll(now), now);
+static void apply(const UiCommand& cmd, uint32_t now) {
   switch (cmd.action) {
-    case UiAction::RefreshWeather:
-      weather.requestRefresh();
-      break;
     case UiAction::LanguageChanged:
       settings.language = cmd.language;
-      weather.setLanguage(languageCode(cmd.language));
       store.save(settings);
       break;
     case UiAction::CalibrationSaved:
@@ -116,7 +82,87 @@ void loop() {
         store.save(settings);
       }
       break;
+    case UiAction::SetRotation:
+      settings.rotateSec = cmd.value;
+      store.save(settings);
+      break;
+    case UiAction::SearchCity:
+      geocoder.search(cmd.text, languageCode(settings.language));
+      break;
+    case UiAction::AddCity:
+      if (cmd.index < geocoder.count()) {
+        const GeoResult& r = geocoder.results()[cmd.index];
+        City city{};
+        strlcpy(city.name, r.name, sizeof(city.name));
+        strlcpy(city.region, r.region, sizeof(city.region));
+        city.latitude = r.latitude;
+        city.longitude = r.longitude;
+        if (addCity(settings.cities, city)) {
+          citiesChanged();
+        }
+      }
+      break;
+    case UiAction::MoveCity:
+      if (moveCity(settings.cities, cmd.index, cmd.delta)) {
+        citiesChanged();
+      }
+      break;
+    case UiAction::RemoveCity:
+      if (removeCity(settings.cities, cmd.index)) {
+        citiesChanged();
+      }
+      break;
     case UiAction::None:
       break;
   }
+}
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("\n[main] CYD weather station starting");
+
+  settings = store.load();
+  weather.setCities(settings.cities);
+
+  tft.init();
+  touch.begin();
+  touch.setCalibration(settings.touch);
+  ui.begin(settings);
+  wifi.setSavedNetworks(&settings.networks);
+  wifi.begin(millis());
+}
+
+void loop() {
+  const uint32_t now = millis();
+
+  wifi.update(now);
+  timeSync.update(wifi.isConnected());
+  weather.update(now, wifi.isConnected());
+  geocoder.update(wifi.isConnected());
+  onConnectAttempt(wifi.attempt());
+
+  UiState state{};
+  state.wifi = wifi.state();
+  state.rssi = wifi.rssi();
+  state.ssid = wifi.ssid();
+  state.ip = wifi.ip();
+  state.scan = wifi.scanState();
+  state.scanVersion = wifi.scanVersion();
+  state.scanResults = &wifi.scanResults();
+  state.saved = &settings.networks;
+  state.attempt = wifi.attempt();
+  state.cities = &settings.cities;
+  state.citiesVersion = citiesVersion;
+  state.rotateSec = settings.rotateSec;
+  state.weather = weather.cities();
+  state.fetch = weather.status();
+  state.dataVersion = weather.version();
+  state.search = geocoder.status();
+  state.searchVersion = geocoder.version();
+  state.searchResults = geocoder.results();
+  state.searchCount = geocoder.count();
+  state.timeValid = timeSync.isValid();
+  state.utcNow = time(nullptr);
+
+  apply(ui.update(state, touch.poll(now), now), now);
 }

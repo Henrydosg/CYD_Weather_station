@@ -7,50 +7,15 @@ namespace ui {
 namespace {
 const uint8_t* gLoadedFont = nullptr;
 constexpr int16_t kBorder = 1;
+constexpr int kBarCount = 4;
+constexpr int16_t kBarW = 3, kBarGap = 2, kBarMinH = 4, kBarStepH = 3;
+constexpr int8_t kRssiLevels[kBarCount] = {-85, -75, -65, -55};  // dBm for 1..4 bars
 constexpr float kChevronHalf = 5.0f;   // half height
 constexpr float kChevronDepth = 4.0f;  // horizontal depth
 constexpr float kChevronStroke = 1.1f;
-}  // namespace
-
-void useFont(TFT_eSPI& tft, const uint8_t* font) {
-  if (font != gLoadedFont) {
-    tft.loadFont(font);  // unloads the previous font
-    gLoadedFont = font;
-  }
-}
-
-uint16_t shadowColor(TFT_eSPI& tft, int16_t ring, int16_t spread) {
-  // Quadratic fall-off: darkest next to the card, invisible at `spread`.
-  const int32_t k = spread + 1 - ring;
-  const int32_t alpha = kShadowAlpha * k * k / ((spread + 1) * (spread + 1));
-  return tft.alphaBlend(static_cast<uint8_t>(alpha), theme::kInk, theme::kBackground);
-}
-
-void drawShadow(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
-  // Rounded rings from the outside in, each one shade darker, shifted down.
-  uint16_t outside = theme::kBackground;
-  for (int16_t i = kShadowSpread; i >= 1; --i) {
-    const uint16_t c = shadowColor(tft, i, kShadowSpread);
-    tft.fillSmoothRoundRect(x - i, y + kShadowOffsetY - i, w + 2 * i, h + 2 * i, kCardRadius + i,
-                            c, outside);
-    outside = c;
-  }
-}
-
-void drawCardBody(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
-  using namespace theme;
-  tft.fillSmoothRoundRect(x, y, w, h, kCardRadius, kCardBorder,
-                          shadowColor(tft, 1, kShadowSpread));
-  tft.fillSmoothRoundRect(x + kBorder, y + kBorder, w - 2 * kBorder, h - 2 * kBorder,
-                          kCardRadius - kBorder, kBackground, kCardBorder);
-}
-
-void drawCard(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
-  drawShadow(tft, x, y, w, h);
-  drawCardBody(tft, x, y, w, h);
-}
-
-namespace {
+constexpr size_t kFitBufLen = 72;  // longest fitted text (city / network names)
+constexpr int16_t kBackChevronX = 14;
+constexpr int16_t kTitleX = 26;
 
 // Remove the last UTF-8 character from `s` (in place).
 void popUtf8Char(char* s) {
@@ -63,12 +28,53 @@ void popUtf8Char(char* s) {
     }
   }
 }
-
-constexpr size_t kFitBufLen = 72;  // longest fitted text: weather description
-constexpr int16_t kBackChevronX = 14;
-constexpr int16_t kTitleX = 26;
-
 }  // namespace
+
+void useFont(TFT_eSPI& tft, const uint8_t* font) {
+  if (font != gLoadedFont) {
+    tft.loadFont(font);  // unloads the previous font
+    gLoadedFont = font;
+  }
+}
+
+void drawCard(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h) {
+  using namespace theme;
+  tft.fillSmoothRoundRect(x, y, w, h, kCardRadius, kCardBorder, kBackground);
+  tft.fillSmoothRoundRect(x + kBorder, y + kBorder, w - 2 * kBorder, h - 2 * kBorder,
+                          kCardRadius - kBorder, kBackground, kCardBorder);
+}
+
+void drawPill(TFT_eSPI& tft, int16_t x, int16_t y, int16_t w, int16_t h, const char* label,
+              uint16_t fill, uint16_t fg, bool outline) {
+  using namespace theme;
+  tft.fillSmoothRoundRect(x, y, w, h, h / 2, fill, kBackground);
+  uint16_t bg = fill;
+  if (outline) {
+    tft.fillSmoothRoundRect(x + kBorder, y + kBorder, w - 2 * kBorder, h - 2 * kBorder,
+                            h / 2 - kBorder, kBackground, fill);
+    bg = kBackground;
+  }
+  tft.setTextColor(fg, bg);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString(label, x + w / 2, y + h / 2);
+}
+
+void drawSignalBars(TFT_eSPI& tft, int16_t x, int16_t bottom, uint8_t lit, uint16_t on) {
+  for (int i = 0; i < kBarCount; ++i) {
+    const int16_t h = kBarMinH + i * kBarStepH;
+    tft.fillRect(x + i * (kBarW + kBarGap), bottom - h, kBarW, h, i < lit ? on : theme::kBarOff);
+  }
+}
+
+uint8_t signalBars(int8_t rssi) {
+  uint8_t bars = 1;  // connected always shows at least one bar
+  for (int i = 1; i < kBarCount; ++i) {
+    if (rssi >= kRssiLevels[i]) {
+      bars = i + 1;
+    }
+  }
+  return bars;
+}
 
 void drawFitted(TFT_eSPI& tft, const char* text, int16_t x, int16_t y, int16_t maxWidth,
                 const uint8_t* large, const uint8_t* small) {

@@ -7,5 +7,7 @@
 
 extern const uint8_t kFontSmall[];  // Roboto-Regular.ttf 15px, 30677 bytes
 extern const uint8_t kFontMedium[];  // Roboto-Medium.ttf 20px, 50377 bytes
-extern const uint8_t kFontTemp[];  // Roboto-Medium.ttf 52px, 14905 bytes
-extern const uint8_t kFontClock[];  // Roboto-Medium.ttf 28px, 4532 bytes
+extern const uint8_t kFontLabel[];  // Roboto-Regular.ttf 13px, 24228 bytes
+extern const uint8_t kFontTiny[];  // Roboto-Regular.ttf 12px, 22945 bytes
+extern const uint8_t kFontTinyBold[];  // Roboto-Medium.ttf 12px, 23340 bytes
+extern const uint8_t kFontBig[];  // Roboto-Medium.ttf 40px, 8874 bytes

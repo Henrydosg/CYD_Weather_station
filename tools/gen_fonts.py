@@ -36,8 +36,10 @@ DIGIT_CHARS = " 0123456789-.:" + DEGREE + "C"
 FONTS = [
     ("kFontSmall", "Roboto-Regular.ttf", 15, TEXT_CHARS),
     ("kFontMedium", "Roboto-Medium.ttf", 20, TEXT_CHARS),
-    ("kFontTemp", "Roboto-Medium.ttf", 52, DIGIT_CHARS),
-    ("kFontClock", "Roboto-Medium.ttf", 28, DIGIT_CHARS),
+    ("kFontLabel", "Roboto-Regular.ttf", 13, TEXT_CHARS),
+    ("kFontTiny", "Roboto-Regular.ttf", 12, TEXT_CHARS),
+    ("kFontTinyBold", "Roboto-Medium.ttf", 12, TEXT_CHARS),
+    ("kFontBig", "Roboto-Medium.ttf", 40, DIGIT_CHARS),
 ]
 
 

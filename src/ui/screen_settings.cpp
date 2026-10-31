@@ -10,42 +10,29 @@ using ui::useFont;
 
 namespace {
 
-constexpr int16_t kMargin = 8;
+constexpr int16_t kMargin = 6;
 constexpr int16_t kRowX = kMargin;
-constexpr int16_t kRowW = 320 - 2 * kMargin;
+constexpr int16_t kRowW = config::kScreenWidth - 2 * kMargin;
+constexpr int16_t kRowY0 = 40, kRowH = 34, kRowPitch = 39;
 constexpr int16_t kTextX = kRowX + 12;
-constexpr int16_t kTextRightX = kRowX + kRowW - 12;
-
+constexpr int16_t kChevronX = kRowX + kRowW - 12;
+constexpr int16_t kValueRightX = kChevronX - 14;
+constexpr int16_t kValueMaxW = 130;
 constexpr int16_t kTitleMaxW = 280;
-constexpr int16_t kChevronSpace = 14;  // right-aligned texts stop before the chevron
 
-constexpr int16_t kLangY = 44, kLangH = 48;
-constexpr int16_t kSegW = 80, kSegH = 30, kSegGap = 4;
-constexpr int16_t kSegEnX = kRowX + kRowW - 8 - kSegW;
-constexpr int16_t kSegViX = kSegEnX - kSegGap - kSegW;
-constexpr int16_t kSegY = kLangY + (kLangH - kSegH) / 2;
+enum Row : int { kCitiesRow, kRotationRow, kLanguageRow, kCalibrateRow, kWifiRow, kRowCount };
 
-constexpr int16_t kCalY = kLangY + kLangH + 8, kCalH = 44;
-
-constexpr int16_t kWifiY = kCalY + kCalH + 8, kWifiH = 60;
-constexpr int16_t kWifiLine1 = kWifiY + 18, kWifiLine2 = kWifiY + 42;
+int16_t rowTop(int row) { return kRowY0 + row * kRowPitch; }
 
 }  // namespace
 
 void ScreenSettings::show(const UiState& state) {
   tft_.fillScreen(kBackground);
-
   ui::drawBackHeader(tft_, tr(Str::Settings), kTitleMaxW);
-
-  drawLanguageRow();
-
-  ui::drawCard(tft_, kRowX, kCalY, kRowW, kCalH);
-  useFont(tft_, kFontSmall);
-  tft_.setTextColor(kInk, kBackground);
-  tft_.setTextDatum(ML_DATUM);
-  tft_.drawString(tr(Str::CalibrateTouch), kTextX, kCalY + kCalH / 2);
-  ui::drawChevron(tft_, kTextRightX, kCalY + kCalH / 2, true, kMuted, kBackground);
-
+  drawCitiesRow(state);
+  drawRotationRow(state);
+  drawRow(kLanguageRow, tr(Str::Language), tr(Str::LanguageName), kMuted);
+  drawRow(kCalibrateRow, tr(Str::CalibrateTouch), "", kMuted);
   drawWifiRow(state);
 }
 
@@ -53,77 +40,65 @@ void ScreenSettings::update(const UiState& state) {
   if (state.wifi != lastWifi_ || strcmp(state.ssid, lastSsid_) != 0) {
     drawWifiRow(state);
   }
+  if (state.rotateSec != lastRotate_) {
+    drawRotationRow(state);
+  }
+  if (state.citiesVersion != lastCities_) {
+    drawCitiesRow(state);
+  }
 }
 
-void ScreenSettings::drawLanguageRow() {
-  ui::drawCard(tft_, kRowX, kLangY, kRowW, kLangH);
+void ScreenSettings::drawRow(int row, const char* label, const char* value,
+                             uint16_t valueColor) {
+  const int16_t top = rowTop(row);
+  const int16_t mid = top + kRowH / 2;
+  ui::drawCard(tft_, kRowX, top, kRowW, kRowH);
   useFont(tft_, kFontSmall);
   tft_.setTextColor(kInk, kBackground);
   tft_.setTextDatum(ML_DATUM);
-  tft_.drawString(tr(Str::Language), kTextX, kLangY + kLangH / 2);
+  tft_.drawString(label, kTextX, mid);
+  tft_.setTextColor(valueColor, kBackground);
+  tft_.setTextDatum(MR_DATUM);
+  ui::drawFitted(tft_, value, kValueRightX, mid, kValueMaxW, kFontSmall, kFontTiny);
+  ui::drawChevron(tft_, kChevronX, mid, true, kMuted, kBackground);
+}
 
-  // Segmented control; the active language is a solid accent pill.
-  const int16_t trackX = kSegViX - 2, trackW = 2 * kSegW + kSegGap + 4;
-  tft_.fillSmoothRoundRect(trackX, kSegY - 2, trackW, kSegH + 4, (kSegH + 4) / 2, kTrack,
-                           kBackground);
+void ScreenSettings::drawCitiesRow(const UiState& state) {
+  lastCities_ = state.citiesVersion;
+  char value[12];
+  snprintf(value, sizeof(value), "%u / %u", state.cities != nullptr ? state.cities->count : 0,
+           config::kMaxCities);
+  drawRow(kCitiesRow, tr(Str::Cities), value, kHighlight);
+}
 
-  const bool en = currentLanguage() == Language::English;
-  const struct {
-    int16_t x;
-    const char* label;
-    bool active;
-  } segs[] = {{kSegViX, "Tiếng Việt", !en}, {kSegEnX, "English", en}};
-  tft_.setTextDatum(MC_DATUM);
-  for (const auto& seg : segs) {
-    uint16_t bg = kTrack;
-    if (seg.active) {
-      bg = kAccent;
-      tft_.fillSmoothRoundRect(seg.x, kSegY, kSegW, kSegH, kSegH / 2, kAccent, kTrack);
-    }
-    tft_.setTextColor(seg.active ? kOnAccent : kInk, bg);
-    tft_.drawString(seg.label, seg.x + kSegW / 2, kSegY + kSegH / 2);
-  }
+void ScreenSettings::drawRotationRow(const UiState& state) {
+  lastRotate_ = state.rotateSec;
+  char value[16];
+  snprintf(value, sizeof(value), tr(Str::SecondsFmt), state.rotateSec);
+  drawRow(kRotationRow, tr(Str::RotateEvery), value, kHighlight);
 }
 
 void ScreenSettings::drawWifiRow(const UiState& state) {
   lastWifi_ = state.wifi;
   strlcpy(lastSsid_, state.ssid, sizeof(lastSsid_));
-  ui::drawCard(tft_, kRowX, kWifiY, kRowW, kWifiH);
-  useFont(tft_, kFontSmall);
-
-  tft_.setTextColor(kInk, kBackground);
-  tft_.setTextDatum(ML_DATUM);
-  tft_.drawString(tr(Str::Network), kTextX, kWifiLine1);
-  ui::drawChevron(tft_, kTextRightX, kWifiY + kWifiH / 2, true, kMuted, kBackground);
-  tft_.setTextDatum(MR_DATUM);
-  tft_.drawString(state.ssid, kTextRightX - kChevronSpace, kWifiLine1);
-
   const bool up = state.wifi == WifiState::Connected;
-  tft_.setTextColor(up ? kOk : kMuted, kBackground);
-  char line[40];
-  if (up) {
-    snprintf(line, sizeof(line), "%s  (%d dBm)", state.ip, state.rssi);
-  } else {
-    strlcpy(line, tr(Str::NotConnected), sizeof(line));
-  }
-  tft_.drawString(line, kTextRightX - kChevronSpace, kWifiLine2);
+  drawRow(kWifiRow, tr(Str::Network), up ? state.ssid : tr(Str::NotConnected),
+          up ? kOk : kMuted);
 }
 
 SettingsTarget ScreenSettings::hitTest(int16_t x, int16_t y) const {
   if (ui::hit(x, y, 0, 0, ui::kBackHitW, ui::kBackHitH)) {
     return SettingsTarget::Back;
   }
-  if (ui::hit(x, y, kSegViX, kLangY, kSegW + kSegGap / 2, kLangH)) {
-    return SettingsTarget::Vietnamese;
-  }
-  if (ui::hit(x, y, kSegEnX - kSegGap / 2, kLangY, kSegW + kSegGap / 2 + kMargin, kLangH)) {
-    return SettingsTarget::English;
-  }
-  if (ui::hit(x, y, kRowX, kCalY, kRowW, kCalH)) {
-    return SettingsTarget::Calibrate;
-  }
-  if (ui::hit(x, y, kRowX, kWifiY, kRowW, kWifiH)) {
-    return SettingsTarget::Wifi;
+  // Rows plus half of the gap around them
+  const int16_t gap = kRowPitch - kRowH;
+  for (int row = 0; row < kRowCount; ++row) {
+    if (ui::hit(x, y, kRowX, rowTop(row) - gap / 2, kRowW, kRowPitch)) {
+      static const SettingsTarget kTargets[kRowCount] = {
+          SettingsTarget::Cities, SettingsTarget::Rotation, SettingsTarget::Language,
+          SettingsTarget::Calibrate, SettingsTarget::Wifi};
+      return kTargets[row];
+    }
   }
   return SettingsTarget::None;
 }
