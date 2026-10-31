@@ -4,7 +4,8 @@ namespace {
 constexpr uint16_t kMaxIconWidth = 128;
 }
 
-void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, uint16_t bg) {
+void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, const theme::Palette& p,
+              uint8_t glassAlpha) {
   if (icon.width > kMaxIconWidth) {
     return;
   }
@@ -14,6 +15,7 @@ void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, uint16_t bg
   const bool oldSwap = gfx.getSwapBytes();
   gfx.setSwapBytes(true);
   for (uint16_t row = 0; row < icon.height; ++row) {
+    const uint16_t bg = theme::glassAt(p, y + row, glassAlpha);
     const uint32_t base = static_cast<uint32_t>(row) * icon.width;
     for (uint16_t col = 0; col < icon.width; ++col) {
       const uint8_t a = icon.alpha[base + col];

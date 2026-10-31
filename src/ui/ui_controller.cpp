@@ -3,12 +3,25 @@
 #include "config.h"
 #include "strings.h"
 
+namespace {
+constexpr uint8_t kIliGammaSet = 0x26;  // ILI9341 "Gamma Set" command
+constexpr uint8_t kGammaCurve1 = 0x01, kGammaCurve2 = 0x02;
+}  // namespace
+
 UiController::UiController(TFT_eSPI& tft)
     : tft_(tft), main_(tft), settings_(tft), calibration_(tft) {}
 
 void UiController::begin(const Settings& settings) {
   tft_.setRotation(config::kScreenRotation);
   tft_.invertDisplay(config::kInvertDisplay);
+  if (config::kGammaFix) {
+    // Switching curves and back reloads the gamma tables (setup only).
+    tft_.writecommand(kIliGammaSet);
+    tft_.writedata(kGammaCurve2);
+    delay(config::kGammaFixSettleMs);
+    tft_.writecommand(kIliGammaSet);
+    tft_.writedata(kGammaCurve1);
+  }
   setLanguage(settings.language);
   main_.begin();
 

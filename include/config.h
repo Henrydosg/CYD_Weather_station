@@ -14,8 +14,19 @@ constexpr uint8_t kScreenRotation = 1;  // landscape, 320 x 240
 // Some CYD panel variants (e.g. "TPM408-2.8") show a colour negative unless
 // display inversion is enabled. Set to false if colours look inverted.
 constexpr bool kInvertDisplay = true;
+// Re-selects the ILI9341 gamma curve after init (GAMMASET 2 then 1), a fix
+// suggested for washed-out CYD panels. Try true and compare on the board.
+constexpr bool kGammaFix = false;
+constexpr uint32_t kGammaFixSettleMs = 120;  // once, during setup()
 constexpr int16_t kScreenWidth = 320;
 constexpr int16_t kScreenHeight = 240;
+
+// Sky colours follow the time of day. Dawn and dusk are windows around the
+// sunrise / sunset reported by the weather provider (minutes).
+constexpr int16_t kDawnBeforeMin = 40;
+constexpr int16_t kDawnAfterMin = 40;
+constexpr int16_t kDuskBeforeMin = 60;
+constexpr int16_t kDuskAfterMin = 30;
 
 // ---------------------------------------------------------------------------
 // Touch controller XPT2046 (own SPI bus, VSPI)

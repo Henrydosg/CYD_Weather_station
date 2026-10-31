@@ -89,7 +89,8 @@ void ScreenSettings::drawLanguageRow() {
       bg = kText;
       tft_.fillSmoothRoundRect(seg.x, kSegY, kSegW, kSegH, kSegH / 2, kText, track);
     }
-    tft_.setTextColor(seg.active ? palette_->skyBottom : kText, bg);
+    // The sky top is dark in every palette, so it reads well on the white pill.
+    tft_.setTextColor(seg.active ? palette_->skyTop : kText, bg);
     tft_.drawString(seg.label, seg.x + kSegW / 2, kSegY + kSegH / 2);
   }
 }

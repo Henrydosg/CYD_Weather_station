@@ -32,14 +32,28 @@ String buildUrl(const char* apiKey, const char* lang) {
   return url;
 }
 
-// Local HH:MM from a UTC unix time plus the location's UTC offset.
-void formatLocalTime(int64_t utc, int32_t offsetSec, char* out, size_t len) {
+// Local second of the day from a UTC unix time plus the location's UTC offset.
+int32_t localSecondOfDay(int64_t utc, int32_t offsetSec) {
   int64_t secOfDay = (utc + offsetSec) % kSecondsPerDay;
   if (secOfDay < 0) {
     secOfDay += kSecondsPerDay;
   }
+  return static_cast<int32_t>(secOfDay);
+}
+
+// Local HH:MM from a UTC unix time plus the location's UTC offset.
+void formatLocalTime(int64_t utc, int32_t offsetSec, char* out, size_t len) {
+  const int32_t secOfDay = localSecondOfDay(utc, offsetSec);
   snprintf(out, len, "%02d:%02d", static_cast<int>(secOfDay / kSecondsPerHour),
            static_cast<int>((secOfDay % kSecondsPerHour) / kSecondsPerMinute));
+}
+
+// Local minutes after midnight, or -1 when the field is missing.
+int16_t localMinuteOfDay(JsonVariantConst utc, int32_t offsetSec) {
+  if (!utc.is<int64_t>()) {
+    return -1;
+  }
+  return static_cast<int16_t>(localSecondOfDay(utc.as<int64_t>(), offsetSec) / kSecondsPerMinute);
 }
 
 // strlcpy that never cuts a multi-byte UTF-8 character in half.
@@ -129,6 +143,8 @@ bool OpenWeatherMapClient::fetch(WeatherData& out) {
   filter["main"]["humidity"] = true;
   filter["main"]["pressure"] = true;
   filter["wind"]["speed"] = true;
+  filter["sys"]["sunrise"] = true;
+  filter["sys"]["sunset"] = true;
   filter["dt"] = true;
   filter["timezone"] = true;
 
@@ -166,10 +182,13 @@ bool OpenWeatherMapClient::fetch(WeatherData& out) {
   // Capitalise an ASCII first letter ("mây đen" -> "Mây đen").
   out.description[0] = static_cast<char>(toupper(static_cast<unsigned char>(out.description[0])));
 
-  formatLocalTime(doc["dt"].as<int64_t>(), doc["timezone"].as<int32_t>(), out.observedAt,
-                  sizeof(out.observedAt));
+  const int32_t offsetSec = doc["timezone"].as<int32_t>();
+  formatLocalTime(doc["dt"].as<int64_t>(), offsetSec, out.observedAt, sizeof(out.observedAt));
+  out.sunriseMin = localMinuteOfDay(doc["sys"]["sunrise"], offsetSec);
+  out.sunsetMin = localMinuteOfDay(doc["sys"]["sunset"], offsetSec);
 
-  Serial.printf("[weather] %.1f C, %.0f %%, %.1f km/h, id %d \"%s\" @ %s\n", out.temperatureC,
-                out.humidityPct, out.windKmh, conditionId, out.description, out.observedAt);
+  Serial.printf("[weather] %.1f C, %.0f %%, %.1f km/h, id %d \"%s\" @ %s, sun %d..%d min\n",
+                out.temperatureC, out.humidityPct, out.windKmh, conditionId, out.description,
+                out.observedAt, out.sunriseMin, out.sunsetMin);
   return true;
 }

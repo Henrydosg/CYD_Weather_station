@@ -87,15 +87,16 @@ src/
   ui/screen_settings   language selector, touch calibration entry, WiFi status
   ui/screen_calibration  two-point touch calibration (runs automatically on first boot)
   ui/strings           all on-screen text, Vietnamese + English, via tr(Str::X)
-  ui/draw_utils        shared helpers: useFont (font cache), paintSky, drawCard, chevron
+  ui/draw_utils        shared helpers: useFont (font cache), paintSky, drawGlass/drawCard, chevron
   ui/analog_clock      analog clock + digital time, rendered in sprites once per second
   ui/icon              alpha-blended RGB565 icon drawing
-  ui/theme             "dynamic sky" palettes per weather/day-night, skyAt(), blend()
+  ui/theme             sky palettes per weather x time of day, skyAt(), glassAt(), blend()
   ui/touch_input       XPT2046 on VSPI, debounced taps with calibrated screen coordinates
   ui/assets/           GENERATED - fonts.* and icons.* (do not edit by hand)
 tools/
   gen_fonts.py         Roboto (C:/Windows/Fonts, Apache 2.0) -> VLW smooth fonts
   gen_icons.py         weather icons drawn with Pillow -> RGB565 + alpha arrays
+  preview_screen.py    PC preview of the main screen for every palette (Pillow)
 ```
 
 Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `weather.update()` →
@@ -125,13 +126,22 @@ saved) applied by `main.cpp`, which also persists settings.
 - Smooth fonts: always `ui::useFont(tft, kFontX)` (shared cache across screens), never
   `tft.loadFont` directly.
   Always pass a background colour to `setTextColor(fg, bg)` so glyph edges blend correctly.
-- Theme: the background is a vertical sky gradient chosen by `theme::paletteFor()`
-  (weather category + day/night). Paint any redrawn region with `theme::skyAt(palette, y)`
-  row by row (`ScreenMain::paintSky`, `AnalogClock::paintSky`) so it matches the rest of
-  the screen; cards are white at `kCardAlpha` over the sky. A palette change triggers a
-  full-screen redraw.
+- Theme: the background is a three-stop vertical sky gradient (top, mid at row 120,
+  bottom) chosen by `theme::paletteFor(data, localTime)`: 4 weather families (clear,
+  cloudy/fog, rain, storm) x 4 day phases (dawn, day, dusk, night; windows around the
+  provider's sunrise/sunset in `config.h`, fallback `isDay`). Palette tops stay dark so
+  header text on the sky stays readable. Paint redrawn sky with `ui::paintSky` (row by row
+  via `theme::skyAt`).
+- Cards are dark glass: `ui::drawCard` / `ui::drawGlass` darken the sky row by row
+  (`kGlassAlpha`), so a card's colour varies per row. Text on glass uses
+  `theme::glassAt(palette, textMidY)` as background; icons use
+  `drawIcon(..., palette)` which blends per row. The footer is a darker strip
+  (`kFooterGlassAlpha`). A palette change triggers a full-screen redraw.
+- UI preview on PC: `python tools/preview_screen.py --out <png> [--scale 2] [--lang en]`
+  renders the main screen for all 16 palettes, read from `theme.cpp`. Keep it in sync
+  with `screen_main.cpp` when the layout changes.
 - Partition table is `huge_app.csv` (3 MB app, no OTA) to fit the assets.
-- RAM: the clock uses two 16-bit sprites (136x136 and 138x30, ~45 KB heap). Avoid
+- RAM: the clock uses two 16-bit sprites (136x136 and 112x28, ~43 KB heap). Avoid
   full-screen sprites (150 KB) - there is no PSRAM and TLS needs ~40 KB during a fetch.
 
 ## Coding rules

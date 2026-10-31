@@ -5,6 +5,8 @@
 #include <TFT_eSPI.h>
 #include <stdint.h>
 
+#include "theme.h"
+
 struct Icon {
   uint16_t width;
   uint16_t height;
@@ -12,5 +14,7 @@ struct Icon {
   const uint8_t* alpha;  // 0 = transparent, 255 = opaque
 };
 
-// Draw an icon alpha-blended onto a solid background colour.
-void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, uint16_t bg);
+// Draw an icon alpha-blended onto dark glass over the sky (row by row, see
+// theme::glassAt). glassAlpha 0 draws straight onto the sky.
+void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, const theme::Palette& p,
+              uint8_t glassAlpha = theme::kGlassAlpha);

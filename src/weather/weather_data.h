@@ -25,6 +25,8 @@ struct WeatherData {
   bool isDay = true;
   char description[64] = "";     // UTF-8, provider language
   char observedAt[6] = "--:--";  // local HH:MM of the observation
+  int16_t sunriseMin = -1;       // local minutes after midnight, -1 = unknown
+  int16_t sunsetMin = -1;
 };
 
 enum class FetchStatus : uint8_t {
