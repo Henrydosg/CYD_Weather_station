@@ -33,15 +33,25 @@ constexpr uint32_t kWifiRetryInitialMs = 5000;
 constexpr uint32_t kWifiRetryMaxMs = 60000;
 
 // ---------------------------------------------------------------------------
+// Time (SNTP)
+// ---------------------------------------------------------------------------
+// POSIX TZ string: "<+07>-7" = UTC+7, no DST (Vietnam).
+constexpr char kTimezonePosix[] = "<+07>-7";
+constexpr char kNtpServer1[] = "pool.ntp.org";
+constexpr char kNtpServer2[] = "time.google.com";
+// Any epoch before this means the clock has not been set yet (2024-01-01).
+constexpr uint32_t kMinValidEpoch = 1704067200UL;
+
+// ---------------------------------------------------------------------------
 // Location / OpenWeatherMap (Current Weather API 2.5, free tier)
 // ---------------------------------------------------------------------------
-constexpr char kLocationName[] = "Ho Chi Minh City";
+constexpr char kLocationName[] = "TP. Hồ Chí Minh";  // UTF-8, glyphs from tools/gen_fonts.py
 constexpr char kLatitude[] = "10.82";
 constexpr char kLongitude[] = "106.63";
 
 constexpr char kOwmBaseUrl[] = "https://api.openweathermap.org/data/2.5/weather";
 constexpr char kOwmUnits[] = "metric";  // temperature in C, wind in m/s
-constexpr char kOwmLang[] = "en";       // TFT fonts are ASCII only
+constexpr char kOwmLang[] = "vi";       // smooth fonts include Vietnamese glyphs
 constexpr uint32_t kWeatherRefreshMs = 10UL * 60UL * 1000UL;  // 10 minutes (limit: 60/min)
 constexpr uint32_t kWeatherRetryMs = 60UL * 1000UL;           // after an error
 constexpr uint16_t kHttpTimeoutMs = 5000;

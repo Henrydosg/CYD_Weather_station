@@ -73,16 +73,37 @@ include/
 src/
   main.cpp             setup()/loop() only: creates modules and wires them together
   net/wifi_manager     non-blocking STA state machine, reconnect with backoff 5 s to 60 s
+  net/time_sync        SNTP (UTC+7) started on each WiFi connect, local time for the clock
   weather/weather_data.h   provider-independent WeatherData / WeatherCategory / FetchStatus
   weather/openweathermap   HTTPS GET + filtered JSON parse -> WeatherData, refresh scheduling
   weather/owm_codes        OpenWeatherMap condition id -> WeatherCategory
   weather/owm_root_ca.h    USERTrust RSA root CA (valid to 2038-01-18) for TLS verification
-  ui/screen_main       main screen, redraws only regions whose inputs changed
+  ui/screen_main       main screen: weather card, detail list, footer, date; redraws on change
+  ui/analog_clock      analog clock + digital time, rendered in sprites once per second
+  ui/icon              alpha-blended RGB565 icon drawing
+  ui/theme.h           shared UI colours
   ui/touch_input       XPT2046 on VSPI, debounced tap detection
+  ui/assets/           GENERATED - fonts.* and icons.* (do not edit by hand)
+tools/
+  gen_fonts.py         Roboto (C:/Windows/Fonts, Apache 2.0) -> VLW smooth fonts
+  gen_icons.py         weather icons drawn with Pillow -> RGB565 + alpha arrays
 ```
 
-Data flow per `loop()`: `wifi.update()` → `touch.tapped()` → `weather.update()` →
-`screen.update(UiState)`.
+Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `touch.tapped()` →
+`weather.update()` → `screen.update(UiState)`.
+
+## UI assets
+
+- Fonts and icons are generated, then committed. After changing a script, regenerate:
+  `python tools/gen_fonts.py` / `python tools/gen_icons.py --preview <png>` (needs Pillow).
+- Any character shown on screen must be in the font's glyph set in `gen_fonts.py`
+  (`TEXT_CHARS`: ASCII + Vietnamese + `°`; `kFontTemp`/`kFontClock` contain digits only).
+  Missing glyphs are silently skipped. Only precomposed (NFC) Vietnamese is supported.
+- Smooth fonts: `tft.loadFont(kFontX)`; `ScreenMain::useFont()` caches the loaded font.
+  Always pass a background colour to `setTextColor(fg, bg)` so glyph edges blend correctly.
+- Partition table is `huge_app.csv` (3 MB app, no OTA) to fit the assets.
+- RAM: the clock uses two 16-bit sprites (136x136 and 138x30, ~45 KB heap). Avoid
+  full-screen sprites (150 KB) - there is no PSRAM and TLS needs ~40 KB during a fetch.
 
 ## Coding rules
 
@@ -99,7 +120,8 @@ Data flow per `loop()`: `wifi.update()` → `touch.tapped()` → `weather.update
 - Modules don't depend on each other except through plain data (`WeatherData`,
   `WifiState`, `FetchStatus`, `UiState`). Only `main.cpp` knows about all modules.
 - Avoid `String` concatenation in hot paths; use `snprintf` into stack buffers for UI text.
-- Built-in TFT fonts are ASCII only. On-screen text is English, no Vietnamese diacritics.
+- On-screen text is Vietnamese (UTF-8 string literals) using the smooth fonts in
+  `ui/assets`; OpenWeatherMap descriptions are requested with `lang=vi`.
 - Serial logs: `Serial.printf("[module] ...")`, 115200 baud.
 - OpenWeatherMap is called over HTTPS with certificate verification (`setCACert`), since
   the API key is in the query string. Don't switch to `setInsecure()` or plain HTTP. If

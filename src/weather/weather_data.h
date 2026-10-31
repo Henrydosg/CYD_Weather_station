@@ -23,7 +23,7 @@ struct WeatherData {
   float pressureHpa = 0;
   WeatherCategory category = WeatherCategory::Unknown;
   bool isDay = true;
-  char description[32] = "";
+  char description[64] = "";     // UTF-8, provider language
   char observedAt[6] = "--:--";  // local HH:MM of the observation
 };
 

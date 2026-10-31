@@ -4,6 +4,7 @@
 #include <TFT_eSPI.h>
 
 #include "config.h"
+#include "net/time_sync.h"
 #include "net/wifi_manager.h"
 #include "ui/screen_main.h"
 #include "ui/touch_input.h"
@@ -19,6 +20,7 @@ static TFT_eSPI tft;
 static ScreenMain screen(tft);
 static TouchInput touch;
 static WifiManager wifi(secrets::kWifiSsid, secrets::kWifiPassword);
+static TimeSync timeSync;
 static OpenWeatherMapClient weather(secrets::kOwmApiKey);
 
 void setup() {
@@ -35,11 +37,14 @@ void loop() {
   const uint32_t now = millis();
 
   wifi.update(now);
+  timeSync.update(wifi.isConnected());
   if (touch.tapped(now)) {
     Serial.println("[main] tap -> refresh");
     weather.requestRefresh();
   }
   weather.update(now, wifi.isConnected());
 
-  screen.update(UiState{wifi.state(), weather.status(), weather.version(), &weather.data()});
+  UiState ui{wifi.state(), weather.status(), weather.version(), &weather.data(), false, {}};
+  ui.timeValid = timeSync.localTime(ui.localTime);
+  screen.update(ui);
 }

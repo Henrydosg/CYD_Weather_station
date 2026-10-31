@@ -42,6 +42,22 @@ void formatLocalTime(int64_t utc, int32_t offsetSec, char* out, size_t len) {
            static_cast<int>((secOfDay % kSecondsPerHour) / kSecondsPerMinute));
 }
 
+// strlcpy that never cuts a multi-byte UTF-8 character in half.
+void copyUtf8(char* dst, const char* src, size_t size) {
+  if (strlcpy(dst, src, size) < size) {
+    return;
+  }
+  size_t len = strlen(dst);
+  // Drop trailing continuation bytes and the lead byte of the cut character.
+  while (len > 0 && (static_cast<unsigned char>(dst[len - 1]) & 0xC0) == 0x80) {
+    --len;
+  }
+  if (len > 0 && (static_cast<unsigned char>(dst[len - 1]) & 0x80) != 0) {
+    --len;
+  }
+  dst[len] = '\0';
+}
+
 }  // namespace
 
 void OpenWeatherMapClient::update(uint32_t now, bool networkUp) {
@@ -145,7 +161,8 @@ bool OpenWeatherMapClient::fetch(WeatherData& out) {
   const size_t iconLen = strlen(icon);
   out.isDay = iconLen == 0 || icon[iconLen - 1] != 'n';
 
-  strlcpy(out.description, weather["description"] | "", sizeof(out.description));
+  copyUtf8(out.description, weather["description"] | "", sizeof(out.description));
+  // Capitalise an ASCII first letter ("mây đen" -> "Mây đen").
   out.description[0] = static_cast<char>(toupper(static_cast<unsigned char>(out.description[0])));
 
   formatLocalTime(doc["dt"].as<int64_t>(), doc["timezone"].as<int32_t>(), out.observedAt,

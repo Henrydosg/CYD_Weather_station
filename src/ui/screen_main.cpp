@@ -1,242 +1,273 @@
 #include "screen_main.h"
 
+#include <math.h>
+
+#include "assets/fonts.h"
+#include "assets/icons.h"
 #include "config.h"
+#include "icon.h"
+#include "theme.h"
+
+using namespace theme;
 
 namespace {
 
-// Colors
-constexpr uint16_t kBg = TFT_BLACK;
-constexpr uint16_t kHeaderBg = 0x10A2;  // dark slate
-constexpr uint16_t kText = TFT_WHITE;
-constexpr uint16_t kMuted = TFT_LIGHTGREY;
-constexpr uint16_t kAccent = TFT_CYAN;
-constexpr uint16_t kCloud = 0xC618;
-constexpr uint16_t kDarkCloud = 0x7BEF;
-constexpr uint16_t kRain = 0x3D7F;
-
-// Built-in TFT_eSPI fonts
-constexpr uint8_t kFontSmall = 2;  // 16 px
-constexpr uint8_t kFontMedium = 4; // 26 px
-constexpr uint8_t kFontBig = 7;    // 48 px, 7-segment digits only
-
 // Layout (landscape 320 x 240)
-constexpr int16_t kHeaderH = 26;
-constexpr int16_t kBodyY = kHeaderH;
-constexpr int16_t kBodyH = 128;
-constexpr int16_t kDetailsY = kBodyY + kBodyH;
-constexpr int16_t kDetailsH = 58;
-constexpr int16_t kFooterY = kDetailsY + kDetailsH;
-constexpr int16_t kFooterH = config::kScreenHeight - kFooterY;
-constexpr int16_t kMargin = 8;
-constexpr int16_t kIconCx = 62;
-constexpr int16_t kIconCy = kBodyY + 60;
-constexpr int16_t kTempX = 128;
-constexpr int16_t kTempY = kBodyY + 18;
-constexpr int16_t kDescY = kBodyY + 82;
-constexpr int16_t kColRightX = 168;
+constexpr int16_t kMargin = 6;
+constexpr int16_t kRadius = 8;
 
-uint16_t wifiColor(WifiState s) {
-  switch (s) {
-    case WifiState::Connected:    return TFT_GREEN;
-    case WifiState::Connecting:   return TFT_YELLOW;
-    case WifiState::WaitingRetry: return TFT_RED;
-    default:                      return kMuted;
+constexpr int16_t kHeaderMidY = 14;
+constexpr int16_t kWifiDotR = 4;
+
+constexpr int16_t kLeftW = 166;
+constexpr int16_t kWeatherY = 30;
+constexpr int16_t kWeatherH = 104;
+constexpr int16_t kIconX = kMargin + 4;
+constexpr int16_t kIconY = kWeatherY + 4;
+constexpr int16_t kIconSize = 72;
+constexpr int16_t kTempRightX = kMargin + kLeftW - 8;
+constexpr int16_t kTempMidY = kIconY + kIconSize / 2;
+constexpr int16_t kTempMaxW = kTempRightX - (kIconX + kIconSize + 2);
+constexpr int16_t kDescX = kMargin + 8;
+constexpr int16_t kDescMidY = kWeatherY + kWeatherH - 14;
+constexpr int16_t kDescMaxW = kLeftW - 16;
+
+constexpr int16_t kDetailsY = kWeatherY + kWeatherH + 4;
+constexpr int16_t kRowH = 20;
+constexpr int kRows = 4;
+constexpr int16_t kDetailsH = kRowH * kRows + 2;
+constexpr int16_t kRowIconX = kMargin + 8;
+constexpr int16_t kRowIconSize = 16;
+constexpr int16_t kRowLabelX = kRowIconX + kRowIconSize + 8;
+constexpr int16_t kRowValueX = kMargin + kLeftW - 8;
+
+constexpr int16_t kClockX = 178;
+constexpr int16_t kClockY = 30;
+constexpr int16_t kClockSize = 136;
+constexpr int16_t kClockMidX = kClockX + kClockSize / 2;
+constexpr int16_t kDigitalX = kClockMidX - 69;
+constexpr int16_t kDigitalY = kClockY + kClockSize + 2;
+constexpr int16_t kDateY = kDigitalY + 30;
+constexpr int16_t kDateH = 18;
+
+constexpr int16_t kFooterY = 222;
+constexpr int16_t kFooterMidY = kFooterY + 9;
+
+const char* const kWeekdays[] = {"Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư",
+                                 "Thứ Năm",  "Thứ Sáu", "Thứ Bảy"};
+
+const Icon& weatherIcon(WeatherCategory c, bool isDay) {
+  switch (c) {
+    case WeatherCategory::Clear:        return isDay ? kIconClearDay : kIconClearNight;
+    case WeatherCategory::PartlyCloudy: return isDay ? kIconPartlyDay : kIconPartlyNight;
+    case WeatherCategory::Cloudy:       return kIconCloudy;
+    case WeatherCategory::Fog:          return kIconFog;
+    case WeatherCategory::Drizzle:      return kIconDrizzle;
+    case WeatherCategory::Rain:         return kIconRain;
+    case WeatherCategory::Snow:         return kIconSnow;
+    case WeatherCategory::Thunderstorm: return kIconThunder;
+    default:                            return kIconCloudy;
+  }
+}
+
+// Remove the last UTF-8 character from `s` (in place).
+void popUtf8Char(char* s) {
+  size_t len = strlen(s);
+  while (len > 0) {
+    const unsigned char c = static_cast<unsigned char>(s[--len]);
+    s[len] = '\0';
+    if ((c & 0xC0) != 0x80) {  // reached the lead byte
+      break;
+    }
   }
 }
 
 }  // namespace
 
+ScreenMain::ScreenMain(TFT_eSPI& tft)
+    : tft_(tft), clock_(tft, kClockX, kClockY, kDigitalX, kDigitalY) {}
+
 void ScreenMain::begin() {
   tft_.setRotation(config::kScreenRotation);
   tft_.fillScreen(kBg);
+  clock_.begin();
   firstFrame_ = true;
+}
+
+void ScreenMain::useFont(const uint8_t* font) {
+  if (font != font_) {
+    tft_.loadFont(font);  // unloads the previous font
+    font_ = font;
+  }
 }
 
 void ScreenMain::update(const UiState& s) {
   const bool newData = firstFrame_ || s.dataVersion != last_.dataVersion;
   const WeatherData* data = s.dataVersion > 0 ? s.data : nullptr;
+  const struct tm* now = s.timeValid ? &s.localTime : nullptr;
 
   if (firstFrame_ || s.wifi != last_.wifi) {
     drawHeader(s.wifi);
   }
   if (newData) {
     drawWeather(data);
+    drawDetails(data);
   }
   if (newData || s.fetch != last_.fetch) {
     drawFooter(s.fetch, data);
   }
+  if (firstFrame_ || s.timeValid != last_.timeValid ||
+      (s.timeValid && s.localTime.tm_mday != last_.localTime.tm_mday)) {
+    drawDate(now);
+  }
+  clock_.update(now);
 
   last_ = s;
   firstFrame_ = false;
 }
 
 void ScreenMain::drawHeader(WifiState wifi) {
-  tft_.fillRect(0, 0, config::kScreenWidth, kHeaderH, kHeaderBg);
-  tft_.setTextDatum(ML_DATUM);
-  tft_.setTextColor(kText, kHeaderBg);
-  tft_.drawString(config::kLocationName, kMargin, kHeaderH / 2, kFontSmall);
+  tft_.fillRect(0, 0, config::kScreenWidth, kWeatherY - 2, kBg);
 
-  const uint16_t color = wifiColor(wifi);
+  useFont(kFontMedium);
+  tft_.setTextColor(kText, kBg);
+  tft_.setTextDatum(ML_DATUM);
+  tft_.drawString(config::kLocationName, kMargin + 2, kHeaderMidY);
+
+  const char* label = "WiFi";
+  uint16_t color = kOk;
+  switch (wifi) {
+    case WifiState::Connected:    break;
+    case WifiState::Connecting:   label = "Đang kết nối"; color = kWarn;  break;
+    case WifiState::WaitingRetry: label = "Mất WiFi";     color = kError; break;
+    case WifiState::Idle:         label = "WiFi tắt";     color = kMuted; break;
+  }
+  const int16_t dotX = config::kScreenWidth - kMargin - kWifiDotR;
+  tft_.fillSmoothCircle(dotX, kHeaderMidY, kWifiDotR, color, kBg);
+  useFont(kFontSmall);
+  tft_.setTextColor(color, kBg);
   tft_.setTextDatum(MR_DATUM);
-  tft_.setTextColor(color, kHeaderBg);
-  const int16_t textRight = config::kScreenWidth - kMargin - 14;
-  tft_.drawString(wifi == WifiState::Connected ? "WiFi" : wifiStateName(wifi), textRight,
-                  kHeaderH / 2, kFontSmall);
-  tft_.fillCircle(config::kScreenWidth - kMargin - 4, kHeaderH / 2, 4, color);
+  tft_.drawString(label, dotX - kWifiDotR - 6, kHeaderMidY);
+}
+
+void ScreenMain::drawFitted(const char* text, int16_t x, int16_t y, int16_t maxWidth) {
+  useFont(kFontMedium);
+  if (tft_.textWidth(text) > maxWidth) {
+    useFont(kFontSmall);
+  }
+  char buf[sizeof(WeatherData::description) + 4];
+  strlcpy(buf, text, sizeof(buf));
+  if (tft_.textWidth(buf) > maxWidth) {
+    // Still too long: trim characters and append "..".
+    do {
+      popUtf8Char(buf);
+      char probe[sizeof(buf)];
+      snprintf(probe, sizeof(probe), "%s..", buf);
+      if (tft_.textWidth(probe) <= maxWidth || buf[0] == '\0') {
+        strlcpy(buf, probe, sizeof(buf));
+        break;
+      }
+    } while (true);
+  }
+  tft_.drawString(buf, x, y);
 }
 
 void ScreenMain::drawWeather(const WeatherData* d) {
-  tft_.fillRect(0, kBodyY, config::kScreenWidth, kBodyH + kDetailsH, kBg);
+  tft_.fillRect(0, kWeatherY, kMargin + kLeftW + 2, kWeatherH, kBg);
+  tft_.fillSmoothRoundRect(kMargin, kWeatherY, kLeftW, kWeatherH, kRadius, kCard, kBg);
 
   if (d == nullptr) {
+    useFont(kFontSmall);
+    tft_.setTextColor(kMuted, kCard);
     tft_.setTextDatum(MC_DATUM);
-    tft_.setTextColor(kMuted, kBg);
-    tft_.drawString("Waiting for data...", config::kScreenWidth / 2, kBodyY + kBodyH / 2,
-                    kFontMedium);
+    tft_.drawString("Đang chờ dữ liệu...", kMargin + kLeftW / 2, kWeatherY + kWeatherH / 2);
     return;
   }
 
-  drawIcon(kIconCx, kIconCy, d->category, d->isDay);
+  drawIcon(tft_, weatherIcon(d->category, d->isDay), kIconX, kIconY, kCard);
 
-  // Temperature: big 7-segment digits followed by a degree mark and unit.
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%.1f", d->temperatureC);
-  tft_.setTextDatum(TL_DATUM);
-  tft_.setTextColor(kText, kBg);
-  const int16_t w = tft_.drawString(buf, kTempX, kTempY, kFontBig);
-  const int16_t degX = kTempX + w + 8;
-  tft_.drawCircle(degX, kTempY + 5, 4, kText);
-  tft_.drawCircle(degX, kTempY + 5, 3, kText);
-  tft_.drawString("C", degX + 7, kTempY, kFontMedium);
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%ld°", lroundf(d->temperatureC));
+  useFont(kFontTemp);
+  if (tft_.textWidth(buf) > kTempMaxW) {
+    useFont(kFontMedium);
+  }
+  tft_.setTextColor(kText, kCard);
+  tft_.setTextDatum(MR_DATUM);
+  tft_.drawString(buf, kTempRightX, kTempMidY);
 
-  // Provider descriptions can be long ("thunderstorm with heavy drizzle").
-  const int16_t descMaxW = config::kScreenWidth - kTempX - kMargin;
-  const uint8_t descFont =
-      tft_.textWidth(d->description, kFontMedium) <= descMaxW ? kFontMedium : kFontSmall;
-  tft_.setTextColor(kAccent, kBg);
-  tft_.drawString(d->description, kTempX, kDescY, descFont);
+  tft_.setTextColor(kAccent, kCard);
+  tft_.setTextDatum(ML_DATUM);
+  drawFitted(d->description, kDescX, kDescMidY, kDescMaxW);
+}
 
-  // Details: two columns, two rows.
-  tft_.drawFastHLine(kMargin, kDetailsY, config::kScreenWidth - 2 * kMargin, kHeaderBg);
-  const int16_t row1 = kDetailsY + 8;
-  const int16_t row2 = row1 + 24;
-  tft_.setTextColor(kMuted, kBg);
+void ScreenMain::drawDetails(const WeatherData* d) {
+  tft_.fillRect(0, kDetailsY, kMargin + kLeftW + 2, kDetailsH, kBg);
+  tft_.fillSmoothRoundRect(kMargin, kDetailsY, kLeftW, kDetailsH, kRadius, kCard, kBg);
 
-  snprintf(buf, sizeof(buf), "Feels %.1f C", d->apparentC);
-  tft_.drawString(buf, kMargin, row1, kFontSmall);
-  snprintf(buf, sizeof(buf), "Humidity %.0f %%", d->humidityPct);
-  tft_.drawString(buf, kColRightX, row1, kFontSmall);
-  snprintf(buf, sizeof(buf), "Wind %.1f km/h", d->windKmh);
-  tft_.drawString(buf, kMargin, row2, kFontSmall);
-  snprintf(buf, sizeof(buf), "Pressure %.0f hPa", d->pressureHpa);
-  tft_.drawString(buf, kColRightX, row2, kFontSmall);
+  char values[kRows][16];
+  if (d != nullptr) {
+    snprintf(values[0], sizeof(values[0]), "%ld°", lroundf(d->apparentC));
+    snprintf(values[1], sizeof(values[1]), "%.0f%%", d->humidityPct);
+    snprintf(values[2], sizeof(values[2]), "%.0f km/h", d->windKmh);
+    snprintf(values[3], sizeof(values[3]), "%.0f hPa", d->pressureHpa);
+  } else {
+    for (auto& v : values) {
+      strlcpy(v, "--", sizeof(v));
+    }
+  }
+  const Icon* icons[kRows] = {&kIconFeels, &kIconHumidity, &kIconWind, &kIconPressure};
+  const char* labels[kRows] = {"Cảm giác", "Độ ẩm", "Gió", "Áp suất"};
+
+  useFont(kFontSmall);
+  for (int i = 0; i < kRows; ++i) {
+    const int16_t top = kDetailsY + 1 + i * kRowH;
+    const int16_t mid = top + kRowH / 2;
+    if (i > 0) {
+      tft_.drawFastHLine(kRowIconX, top, kLeftW - 16, kCardLine);
+    }
+    drawIcon(tft_, *icons[i], kRowIconX, mid - kRowIconSize / 2, kCard);
+    tft_.setTextColor(kMuted, kCard);
+    tft_.setTextDatum(ML_DATUM);
+    tft_.drawString(labels[i], kRowLabelX, mid);
+    tft_.setTextColor(kText, kCard);
+    tft_.setTextDatum(MR_DATUM);
+    tft_.drawString(values[i], kRowValueX, mid);
+  }
 }
 
 void ScreenMain::drawFooter(FetchStatus fetch, const WeatherData* d) {
-  tft_.fillRect(0, kFooterY, config::kScreenWidth, kFooterH, kHeaderBg);
-  const int16_t y = kFooterY + kFooterH / 2;
+  tft_.fillRect(0, kFooterY, config::kScreenWidth, config::kScreenHeight - kFooterY, kBg);
+  useFont(kFontSmall);
 
+  char buf[32];
+  snprintf(buf, sizeof(buf), "Cập nhật %s", d != nullptr ? d->observedAt : "--:--");
+  tft_.setTextColor(kMuted, kBg);
   tft_.setTextDatum(ML_DATUM);
-  tft_.setTextColor(kMuted, kHeaderBg);
-  char buf[24];
-  snprintf(buf, sizeof(buf), "Updated %s", d != nullptr ? d->observedAt : "--:--");
-  tft_.drawString(buf, kMargin, y, kFontSmall);
+  tft_.drawString(buf, kMargin + 2, kFooterMidY);
 
-  const char* msg = "Tap to refresh";
+  const char* msg = "Chạm để làm mới";
   uint16_t color = kMuted;
   switch (fetch) {
-    case FetchStatus::Fetching: msg = "Updating...";   color = TFT_YELLOW; break;
-    case FetchStatus::Error:    msg = "Update failed"; color = TFT_RED;    break;
+    case FetchStatus::Fetching: msg = "Đang tải...";   color = kWarn;  break;
+    case FetchStatus::Error:    msg = "Lỗi cập nhật";  color = kError; break;
     default: break;
   }
+  tft_.setTextColor(color, kBg);
   tft_.setTextDatum(MR_DATUM);
-  tft_.setTextColor(color, kHeaderBg);
-  tft_.drawString(msg, config::kScreenWidth - kMargin, y, kFontSmall);
+  tft_.drawString(msg, config::kScreenWidth - kMargin - 2, kFooterMidY);
 }
 
-// ---------------------------------------------------------------------------
-// Icons, drawn with primitives (~100 x 100 px box centred on cx, cy)
-// ---------------------------------------------------------------------------
-
-void ScreenMain::drawSun(int16_t cx, int16_t cy, int16_t r) {
-  constexpr int kRays = 8;
-  for (int i = 0; i < kRays; ++i) {
-    const float a = i * TWO_PI / kRays;
-    tft_.drawWideLine(cx + cosf(a) * (r + 5), cy + sinf(a) * (r + 5), cx + cosf(a) * (r + 13),
-                      cy + sinf(a) * (r + 13), 3, TFT_YELLOW, kBg);
+void ScreenMain::drawDate(const struct tm* t) {
+  tft_.fillRect(kClockX - 4, kDateY, kClockSize + 8, kDateH, kBg);
+  useFont(kFontSmall);
+  tft_.setTextColor(kMuted, kBg);
+  tft_.setTextDatum(MC_DATUM);
+  char buf[32];
+  if (t != nullptr) {
+    snprintf(buf, sizeof(buf), "%s, %02d/%02d", kWeekdays[t->tm_wday], t->tm_mday, t->tm_mon + 1);
+  } else {
+    strlcpy(buf, "Đang đồng bộ giờ...", sizeof(buf));
   }
-  tft_.fillCircle(cx, cy, r, TFT_YELLOW);
-}
-
-void ScreenMain::drawMoon(int16_t cx, int16_t cy, int16_t r) {
-  tft_.fillCircle(cx, cy, r, 0xFFF0);
-  tft_.fillCircle(cx + r / 2, cy - r / 3, r - 2, kBg);
-}
-
-void ScreenMain::drawCloud(int16_t cx, int16_t cy, uint16_t color) {
-  tft_.fillCircle(cx - 18, cy + 4, 16, color);
-  tft_.fillCircle(cx + 2, cy - 8, 22, color);
-  tft_.fillCircle(cx + 24, cy + 4, 16, color);
-  tft_.fillRoundRect(cx - 34, cy + 4, 74, 18, 9, color);
-}
-
-void ScreenMain::drawIcon(int16_t cx, int16_t cy, WeatherCategory category, bool isDay) {
-  auto drawSky = [&](int16_t x, int16_t y, int16_t r) {
-    if (isDay) {
-      drawSun(x, y, r);
-    } else {
-      drawMoon(x, y, r);
-    }
-  };
-
-  switch (category) {
-    case WeatherCategory::Clear:
-      drawSky(cx, cy, 24);
-      break;
-
-    case WeatherCategory::PartlyCloudy:
-      drawSky(cx - 14, cy - 16, 16);
-      drawCloud(cx + 6, cy + 10, kCloud);
-      break;
-
-    case WeatherCategory::Cloudy:
-      drawCloud(cx, cy, kCloud);
-      break;
-
-    case WeatherCategory::Fog:
-      for (int i = 0; i < 4; ++i) {
-        tft_.fillRoundRect(cx - 36 + (i % 2) * 8, cy - 22 + i * 14, 64, 6, 3, kCloud);
-      }
-      break;
-
-    case WeatherCategory::Drizzle:
-    case WeatherCategory::Rain: {
-      drawCloud(cx, cy - 12, kDarkCloud);
-      const int drops = category == WeatherCategory::Rain ? 4 : 3;
-      for (int i = 0; i < drops; ++i) {
-        const int16_t x = cx - 24 + i * 16;
-        tft_.drawWideLine(x, cy + 20, x - 6, cy + 36, 3, kRain, kBg);
-      }
-      break;
-    }
-
-    case WeatherCategory::Snow:
-      drawCloud(cx, cy - 12, kCloud);
-      for (int i = 0; i < 4; ++i) {
-        tft_.fillCircle(cx - 24 + i * 16, cy + 26 + (i % 2) * 8, 4, TFT_WHITE);
-      }
-      break;
-
-    case WeatherCategory::Thunderstorm:
-      drawCloud(cx, cy - 12, kDarkCloud);
-      tft_.fillTriangle(cx + 2, cy + 14, cx - 12, cy + 32, cx, cy + 32, TFT_YELLOW);
-      tft_.fillTriangle(cx - 4, cy + 28, cx + 10, cy + 28, cx - 6, cy + 46, TFT_YELLOW);
-      break;
-
-    case WeatherCategory::Unknown:
-      tft_.setTextDatum(MC_DATUM);
-      tft_.setTextColor(kMuted, kBg);
-      tft_.drawString("?", cx, cy, kFontMedium);
-      break;
-  }
+  tft_.drawString(buf, kClockMidX, kDateY + kDateH / 2);
 }
