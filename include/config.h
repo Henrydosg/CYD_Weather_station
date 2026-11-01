@@ -11,7 +11,7 @@ namespace config {
 // Firmware version (semantic, "major.minor.patch"). Raise it for every release:
 // tools/release.py reads it and devices update when the published one is newer.
 // ---------------------------------------------------------------------------
-constexpr char kFirmwareVersion[] = "1.1.1";
+constexpr char kFirmwareVersion[] = "1.1.2";
 
 // ---------------------------------------------------------------------------
 // Display
@@ -150,6 +150,7 @@ constexpr uint32_t kRssiSampleMs = 5000;  // signal strength refresh for the UI
 constexpr uint32_t kWifiFailGraceMs = 1000;
 constexpr uint32_t kWifiScanTimeoutMs = 10000;  // async scan normally takes 2-4 s
 constexpr uint8_t kMaxScanResults = 12;         // strongest networks kept from a scan
+constexpr uint8_t kWifiEmptyScanRetries = 2;    // a scan that finds nothing is repeated
 constexpr uint8_t kMaxSavedNetworks = 5;        // in NVS, most recently used first
 constexpr uint8_t kMaxSsidLen = 32;             // 802.11 limit
 constexpr uint8_t kMaxPasswordLen = 63;         // WPA2 passphrase limit

@@ -20,6 +20,11 @@ WifiManager::WifiManager(const char* defaultSsid, const char* defaultPassword)
 
 void WifiManager::begin(uint32_t now) {
   WiFi.mode(WIFI_STA);
+  // Networks live in our own NVS keys. Clear a network the WiFi driver stored
+  // itself (e.g. by another firmware flashed before): it may auto-connect and
+  // keep the radio busy, so scans come back empty. Then stop the driver storing.
+  WiFi.disconnect(false, true);
+  WiFi.persistent(false);
   WiFi.setHostname(config::kHostname);
   // Modem sleep wakes the radio ~10 times a second; the current pulses make
   // the backlight (fed from the same 3.3 V rail) shimmer. Always powered here.
@@ -175,6 +180,15 @@ void WifiManager::pollScan(uint32_t now) {
       }
       return;
     }
+    Serial.printf("[wifi] scan done: %d network(s)\n", found);
+    if (found == 0 && emptyScans_ < config::kWifiEmptyScanRetries) {
+      // The first scan after start-up sometimes finds nothing: try again.
+      ++emptyScans_;
+      WiFi.scanDelete();
+      scanRequested_ = true;
+      scanState_ = ScanState::Idle;
+      return;
+    }
     if (found < 0) {
       Serial.println("[wifi] scan failed");
       scanState_ = ScanState::Failed;
@@ -189,6 +203,9 @@ void WifiManager::pollScan(uint32_t now) {
 
   // Start a requested scan unless a connect attempt is using the radio.
   if (scanRequested_ && state_ != WifiState::Connecting) {
+    if (scanState_ != ScanState::Idle || emptyScans_ == 0) {
+      emptyScans_ = 0;  // a new request from the UI (not an automatic repeat)
+    }
     scanRequested_ = false;
     const int16_t r = WiFi.scanNetworks(true /*async*/);
     scanState_ = r == WIFI_SCAN_FAILED ? ScanState::Failed : ScanState::Scanning;
