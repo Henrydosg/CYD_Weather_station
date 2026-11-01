@@ -14,6 +14,7 @@
 #include "screen_photos.h"
 #include "screen_search.h"
 #include "screen_settings.h"
+#include "screen_update.h"
 #include "screen_wifi.h"
 #include "touch_input.h"
 #include "ui_state.h"
@@ -29,7 +30,8 @@ class UiController {
 
  private:
   enum class Screen : uint8_t {
-    Dashboard, Graph, Settings, Calibration, Wifi, Keyboard, Connect, Cities, Search, Photos
+    Dashboard, Graph, Settings, Calibration, Wifi, Keyboard, Connect, Cities, Search, Photos,
+    Update
   };
 
   void showDashboard();
@@ -42,6 +44,7 @@ class UiController {
   UiCommand updateDashboard(const UiState& state, const TouchEvent& touch, uint32_t now);
   UiCommand updateSettings(const UiState& state, const TouchEvent& touch, uint32_t now);
   void updatePhotos(const UiState& state, const TouchEvent& touch, uint32_t now);
+  UiCommand updateUpdate(const UiState& state, const TouchEvent& touch);
   UiCommand updateWifi(const UiState& state, const TouchEvent& touch);
   UiCommand updateKeyboard(const UiState& state, const TouchEvent& touch, uint32_t now);
   UiCommand updateConnect(const UiState& state, const TouchEvent& touch, uint32_t now);
@@ -59,6 +62,7 @@ class UiController {
   ScreenCities cities_;
   ScreenSearch search_;
   ScreenPhotos photos_;
+  ScreenUpdate update_;
   Screen screen_ = Screen::Dashboard;
   Screen afterCalibration_ = Screen::Dashboard;
   uint32_t lastTapAt_ = 0;

@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "config.h"
+#include "net/ota_updater.h"
 #include "net/time_sync.h"
 #include "net/wifi_manager.h"
 #include "photos/photo_library.h"
@@ -17,7 +18,14 @@
 #include "weather/geocoding.h"
 #include "weather/open_meteo.h"
 
-#if __has_include("secrets.h")
+// Release builds (env cyd-release, published for OTA) carry no WiFi password:
+// the device uses the networks saved on its WiFi screen.
+#if defined(RELEASE_BUILD)
+namespace secrets {
+constexpr char kWifiSsid[] = "";
+constexpr char kWifiPassword[] = "";
+}  // namespace secrets
+#elif __has_include("secrets.h")
 #include "secrets.h"
 #else
 #error "Missing include/secrets.h - copy include/secrets.example.h and fill in your WiFi credentials"
@@ -34,6 +42,7 @@ static OpenMeteoClient weather;
 static GeocodingClient geocoder;
 static CityNameResolver cityNames;
 static PhotoLibrary photos;
+static OtaUpdater ota;
 static uint32_t citiesVersion = 1;
 
 // Network the user asked for; remembered in NVS once the connect succeeds.
@@ -122,6 +131,12 @@ static void apply(const UiCommand& cmd, uint32_t now) {
     case UiAction::ScanPhotos:
       photos.scan();
       break;
+    case UiAction::CheckUpdate:
+      ota.requestCheck();
+      break;
+    case UiAction::InstallUpdate:
+      ota.requestInstall();
+      break;
     case UiAction::None:
       break;
   }
@@ -129,7 +144,7 @@ static void apply(const UiCommand& cmd, uint32_t now) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("\n[main] CYD weather station starting");
+  Serial.printf("\n[main] CYD weather station v%s starting\n", config::kFirmwareVersion);
 
   settings = store.load();
   weather.setCities(settings.cities);
@@ -147,15 +162,18 @@ void loop() {
 
   wifi.update(now);
   timeSync.update(wifi.isConnected());
-  weather.update(now, wifi.isConnected());
-  geocoder.update(wifi.isConnected());
+  // While a firmware download runs, nothing else uses the network (RAM for TLS).
+  const bool netFree = wifi.isConnected() && !ota.downloading();
+  weather.update(now, netFree);
+  geocoder.update(netFree);
   // Name lookups only when no weather fetch or search runs in this iteration.
-  const bool namesAllowed = wifi.isConnected() && weather.status() != FetchStatus::Fetching &&
-                            geocoder.status() != SearchStatus::Searching;
-  if (cityNames.update(now, namesAllowed, settings.cities)) {
+  const bool otherRequest = weather.status() == FetchStatus::Fetching ||
+                            geocoder.status() == SearchStatus::Searching;
+  if (cityNames.update(now, netFree && !otherRequest, settings.cities)) {
     ++citiesVersion;
     store.save(settings);
   }
+  ota.update(now, wifi.isConnected(), otherRequest);
   onConnectAttempt(wifi.attempt());
 
   UiState state{};
@@ -179,6 +197,7 @@ void loop() {
   state.searchResults = geocoder.results();
   state.searchCount = geocoder.count();
   state.photos = &photos.list();
+  state.ota = &ota.status();
   state.timeValid = timeSync.isValid();
   state.utcNow = time(nullptr);
 

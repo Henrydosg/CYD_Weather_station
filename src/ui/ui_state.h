@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "../net/ota_status.h"
 #include "../net/wifi_manager.h"
 #include "../photos/photo_library.h"
 #include "../settings/settings.h"
@@ -35,6 +36,8 @@ struct UiState {
   uint8_t searchCount;
   // Photos on the SD card (scanned on UiAction::ScanPhotos)
   const PhotoList* photos;
+  // Firmware update
+  const OtaStatus* ota;
   // Clock
   bool timeValid;
   time_t utcNow;            // valid when timeValid
@@ -53,6 +56,8 @@ enum class UiAction : uint8_t {
   MoveCity,          // see UiCommand::index / delta
   RemoveCity,        // see UiCommand::index
   ScanPhotos,        // (re)mount the SD card and list the photos
+  CheckUpdate,       // look for a newer firmware now
+  InstallUpdate,     // download and install OtaStatus::latest
 };
 
 struct UiCommand {

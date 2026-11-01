@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nạp firmware CYD</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+  <style>
+    :root {
+      --bg: #f6f7f9; --card: #ffffff; --ink: #14181f; --muted: #5b6472;
+      --line: #dfe3e8; --accent: #1f6feb; --warn: #9a6700;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117; --card: #161b22; --ink: #e6edf3; --muted: #8d96a0;
+        --line: #30363d; --accent: #4493f8; --warn: #d29922;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 640px; margin: 0 auto; padding: 32px 16px 48px; }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 24px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 20px; margin-bottom: 16px;
+    }
+    h2 { font-size: 1.1rem; margin: 0 0 12px; }
+    ol { margin: 0; padding-left: 1.3em; }
+    li { margin: 6px 0; }
+    .install { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+    esp-web-install-button button[slot="activate"] {
+      background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+      padding: 12px 22px; font: 600 1rem system-ui, sans-serif; cursor: pointer;
+    }
+    .version { color: var(--muted); font-size: .9rem; }
+    .note { color: var(--warn); }
+    code { font-size: .9em; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>CYD Weather Station</h1>
+  <p class="sub">Nạp firmware cho màn hình thời tiết ESP32-2432S028R bằng cáp USB, ngay trên trình duyệt.</p>
+
+  <section class="card">
+    <h2>Nạp firmware</h2>
+    <ol>
+      <li>Dùng <b>Chrome</b> hoặc <b>Edge</b> trên máy tính (Firefox, Safari không hỗ trợ).</li>
+      <li>Cắm CYD vào máy tính bằng cáp USB (cáp có truyền dữ liệu, không phải cáp chỉ sạc).</li>
+      <li>Bấm nút bên dưới, chọn cổng <code>USB-SERIAL CH340</code> (COM...), rồi <b>Install</b>.</li>
+      <li>Đợi khoảng 1 phút đến khi báo xong. Cài đặt WiFi, thành phố vẫn được giữ.</li>
+    </ol>
+    <div class="install" style="margin-top:16px">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate">Kết nối và nạp firmware</button>
+        <span slot="unsupported" class="note">Trình duyệt này không nạp được. Hãy mở trang bằng Chrome hoặc Edge trên máy tính.</span>
+        <span slot="not-allowed" class="note">Trang phải mở qua https.</span>
+      </esp-web-install-button>
+      <span class="version" id="version"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Không thấy cổng COM?</h2>
+    <ol>
+      <li>Thử cáp USB khác: nhiều cáp chỉ dùng để sạc.</li>
+      <li>Cài driver CH340 (Windows thường tự cài) từ trang của WCH, rồi cắm lại.</li>
+      <li>Nếu máy báo lỗi khi kết nối: giữ nút <b>BOOT</b> trên board, bấm nút nạp, thả BOOT khi bắt đầu chạy.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>Cập nhật không cần cáp</h2>
+    <p style="margin:0">Khi CYD đã có WiFi, vào <b>Cài đặt → Firmware</b>: máy tự kiểm tra mỗi ngày và hiện
+      “Có bản mới”. Bấm <b>Cập nhật</b>, không rút điện đến khi máy khởi động lại.</p>
+  </section>
+</main>
+<script>
+  fetch("manifest.json").then(r => r.json())
+    .then(m => { document.getElementById("version").textContent = "Phiên bản: v" + m.version; })
+    .catch(() => {});
+</script>
+</body>
+</html>

@@ -26,6 +26,10 @@ void WifiManager::begin(uint32_t now) {
   WiFi.setSleep(false);
   // Reconnects are driven by this class so the backoff stays predictable.
   WiFi.setAutoReconnect(false);
+  if (candidateCount() == 0) {
+    Serial.println("[wifi] no network yet: choose one in Settings -> WiFi");
+    return;  // Idle until connectTo()
+  }
   selectCandidate(0);
   startConnect(now);
 }
@@ -34,8 +38,9 @@ void WifiManager::begin(uint32_t now) {
 // unless it is already one of the saved ones.
 uint8_t WifiManager::candidateCount() const {
   const uint8_t saved = saved_ != nullptr ? saved_->count : 0;
+  const bool hasDefault = defaultSsid_[0] != '\0';  // "" in release builds
   const bool defaultSaved = saved_ != nullptr && findNetwork(*saved_, defaultSsid_) != nullptr;
-  return saved + (defaultSaved ? 0 : 1);
+  return saved + (hasDefault && !defaultSaved ? 1 : 0);
 }
 
 void WifiManager::selectCandidate(uint8_t index) {
@@ -135,6 +140,11 @@ void WifiManager::connectFailed(uint32_t now) {
   if (manual_) {
     // The user's choice failed: report it, then go back to the known networks.
     attempt_ = ConnectAttempt::Failed;
+    if (candidateCount() == 0) {
+      WiFi.disconnect();
+      state_ = WifiState::Idle;
+      return;
+    }
     selectCandidate(0);
     startConnect(now);
   } else if (candidate_ + 1 < candidateCount()) {

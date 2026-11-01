@@ -30,7 +30,8 @@ UiController::UiController(TFT_eSPI& tft)
       connect_(tft),
       cities_(tft),
       search_(tft),
-      photos_(tft) {}
+      photos_(tft),
+      update_(tft) {}
 
 void UiController::begin(const Settings& settings) {
   tft_.setRotation(config::kScreenRotation);
@@ -78,8 +79,10 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
   }
   // Menus and the graph left alone return to the weather screen. The photo
   // viewer (a photo frame) and the calibration stay until tapped.
+  const bool installing = state.ota != nullptr && (state.ota->state == OtaState::Downloading ||
+                                                   state.ota->state == OtaState::Restarting);
   const bool staysOpen = screen_ == Screen::Dashboard || screen_ == Screen::Photos ||
-                         screen_ == Screen::Calibration;
+                         screen_ == Screen::Calibration || (screen_ == Screen::Update && installing);
   if (!staysOpen && now - lastTapAt_ >= config::kMenuIdleMs) {
     showDashboard();
   }
@@ -110,6 +113,8 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
     case Screen::Photos:
       updatePhotos(state, touch, now);
       return UiCommand{};
+    case Screen::Update:
+      return updateUpdate(state, touch);
     case Screen::Calibration: {
       UiCommand cmd;
       calibration_.handleTap(touch, now);
@@ -181,6 +186,10 @@ UiCommand UiController::updateSettings(const UiState& state, const TouchEvent& t
       break;
     case SettingsTarget::Calibrate:
       showCalibration(Screen::Settings);
+      break;
+    case SettingsTarget::Firmware:
+      screen_ = Screen::Update;
+      update_.show(state);
       break;
     case SettingsTarget::Wifi:
       showWifi(state, true);
@@ -368,6 +377,27 @@ void UiController::updatePhotos(const UiState& state, const TouchEvent& touch, u
       photos_.step(state, 1);
       break;
   }
+}
+
+UiCommand UiController::updateUpdate(const UiState& state, const TouchEvent& touch) {
+  UiCommand cmd;
+  if (!touch.tapped) {
+    update_.update(state);
+    return cmd;
+  }
+  switch (update_.hitTest(touch.x, touch.y, state)) {
+    case UpdateTarget::Back:
+      showSettings(state);
+      break;
+    case UpdateTarget::Action:
+      cmd.action = state.ota != nullptr && state.ota->state == OtaState::Available
+                       ? UiAction::InstallUpdate
+                       : UiAction::CheckUpdate;
+      break;
+    case UpdateTarget::None:
+      break;
+  }
+  return cmd;
 }
 
 UiCommand UiController::updateSearch(const UiState& state, const TouchEvent& touch) {

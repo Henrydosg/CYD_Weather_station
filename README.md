@@ -10,6 +10,10 @@ API key.
 - Tiếng Việt (tên thành phố có dấu) hoặc tiếng Anh (tên quốc tế).
 - Chọn WiFi trên máy, nhớ tối đa 5 mạng.
 - Xem ảnh JPEG từ thẻ nhớ, tự chuyển ảnh như khung ảnh.
+- Cập nhật firmware qua WiFi, hoặc nạp bằng cáp ngay trên trình duyệt (không cần VS Code).
+
+**Người dùng không lập trình:** mở trang <https://henrydosg.github.io/CYD_Weather_station/>
+bằng Chrome / Edge, cắm cáp USB, bấm nút nạp. Sau đó vào Cài đặt → WiFi để chọn mạng.
 
 ## Build và nạp
 
@@ -66,6 +70,25 @@ chép vào `/photos`; thang xám phải đều từ đen tới trắng.
 - **Chạm lệch:** Cài đặt → Hiệu chuẩn cảm ứng.
 - **"Không thấy thẻ nhớ":** kiểm tra thẻ FAT32, cắm chặt, rồi mở lại màn Ảnh.
 - **Không có dữ liệu thời tiết:** kiểm tra WiFi trong Cài đặt; log ở Serial Monitor 115200 baud.
+
+## Cập nhật firmware
+
+**Trên máy (người dùng):** Cài đặt → **Firmware**. Máy tự kiểm tra mỗi ngày; khi có bản mới,
+dòng Firmware hiện "Có bản mới vX" màu vàng. Mở ra, bấm **Cập nhật**, không rút điện đến khi
+máy khởi động lại (khoảng 1 phút). Cài đặt được giữ nguyên.
+
+**Bằng cáp (khi máy không lên được):** trang nạp web ở trên, nút "Kết nối và nạp firmware".
+
+**Phát hành bản mới (người viết code):**
+
+1. Tăng `kFirmwareVersion` trong `include/config.h` (ví dụ `1.0.0` → `1.1.0`).
+2. `python tools/release.py`: build bản phát hành **không có** `secrets.h` (kiểm tra mật
+   khẩu WiFi không nằm trong file), ghi firmware và manifest vào `docs/`.
+3. Commit và push `docs/`. Các máy thấy bản mới trong vòng một ngày, hoặc ngay khi bấm
+   **Kiểm tra**.
+
+Lần đầu: bật GitHub Pages cho repo (Settings → Pages → Deploy from a branch → `main`,
+thư mục `/docs`). Bản đầu tiên có OTA phải nạp bằng cáp một lần (đổi bảng phân vùng).
 
 ## Ghi chú kỹ thuật
 

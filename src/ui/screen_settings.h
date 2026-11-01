@@ -1,5 +1,5 @@
 // Settings screen: one row each for cities, rotation interval, language,
-// touch calibration and WiFi; "Photos" button in the header.
+// touch calibration, WiFi and firmware; "Photos" button in the header.
 #pragma once
 
 #include <TFT_eSPI.h>
@@ -14,6 +14,7 @@ enum class SettingsTarget : uint8_t {
   Language,  // toggles Vietnamese / English
   Calibrate,
   Wifi,
+  Firmware,
   Photos,
 };
 
@@ -33,10 +34,12 @@ class ScreenSettings {
   void drawCitiesRow(const UiState& state);
   void drawRotationRow(const UiState& state);
   void drawWifiRow(const UiState& state);
+  void drawFirmwareRow(const UiState& state);
 
   TFT_eSPI& tft_;
   WifiState lastWifi_ = WifiState::Idle;
   char lastSsid_[config::kMaxSsidLen + 1] = "";
   uint8_t lastRotate_ = 0;
   uint32_t lastCities_ = 0;
+  uint32_t lastOta_ = 0;
 };

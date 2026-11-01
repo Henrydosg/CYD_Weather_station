@@ -13,7 +13,7 @@ namespace {
 constexpr int16_t kMargin = 6;
 constexpr int16_t kRowX = kMargin;
 constexpr int16_t kRowW = config::kScreenWidth - 2 * kMargin;
-constexpr int16_t kRowY0 = 40, kRowH = 34, kRowPitch = 39;
+constexpr int16_t kRowY0 = 40, kRowH = 30, kRowPitch = 33;
 constexpr int16_t kTextX = kRowX + 12;
 constexpr int16_t kChevronX = kRowX + kRowW - 12;
 constexpr int16_t kValueRightX = kChevronX - 14;
@@ -24,7 +24,9 @@ constexpr int16_t kPhotosW = 84, kPhotosH = 28;
 constexpr int16_t kPhotosX = config::kScreenWidth - 8 - kPhotosW, kPhotosY = 4;
 constexpr int16_t kPhotosHitX = kPhotosX - 10;
 
-enum Row : int { kCitiesRow, kRotationRow, kLanguageRow, kCalibrateRow, kWifiRow, kRowCount };
+enum Row : int {
+  kCitiesRow, kRotationRow, kLanguageRow, kCalibrateRow, kWifiRow, kFirmwareRow, kRowCount
+};
 
 int16_t rowTop(int row) { return kRowY0 + row * kRowPitch; }
 
@@ -41,6 +43,7 @@ void ScreenSettings::show(const UiState& state) {
   drawRow(kLanguageRow, tr(Str::Language), tr(Str::LanguageName), kMuted);
   drawRow(kCalibrateRow, tr(Str::CalibrateTouch), "", kMuted);
   drawWifiRow(state);
+  drawFirmwareRow(state);
 }
 
 void ScreenSettings::update(const UiState& state) {
@@ -52,6 +55,9 @@ void ScreenSettings::update(const UiState& state) {
   }
   if (state.citiesVersion != lastCities_) {
     drawCitiesRow(state);
+  }
+  if (state.ota != nullptr && state.ota->version != lastOta_) {
+    drawFirmwareRow(state);
   }
 }
 
@@ -93,6 +99,23 @@ void ScreenSettings::drawWifiRow(const UiState& state) {
           up ? kOk : kMuted);
 }
 
+void ScreenSettings::drawFirmwareRow(const UiState& state) {
+  char value[32];
+  uint16_t color = kMuted;
+  const OtaStatus* ota = state.ota;
+  lastOta_ = ota != nullptr ? ota->version : 0;
+  if (ota != nullptr && ota->state == OtaState::Available) {
+    snprintf(value, sizeof(value), tr(Str::UpdateAvailableFmt), ota->latest);
+    color = kHighlight;
+  } else if (ota != nullptr && ota->state == OtaState::Downloading) {
+    snprintf(value, sizeof(value), tr(Str::UpdateDownloadingFmt), ota->progressPct);
+    color = kHighlight;
+  } else {
+    snprintf(value, sizeof(value), "v%s", config::kFirmwareVersion);
+  }
+  drawRow(kFirmwareRow, tr(Str::Firmware), value, color);
+}
+
 SettingsTarget ScreenSettings::hitTest(int16_t x, int16_t y) const {
   if (ui::hit(x, y, 0, 0, ui::kBackHitW, ui::kBackHitH)) {
     return SettingsTarget::Back;
@@ -106,7 +129,7 @@ SettingsTarget ScreenSettings::hitTest(int16_t x, int16_t y) const {
     if (ui::hit(x, y, kRowX, rowTop(row) - gap / 2, kRowW, kRowPitch)) {
       static const SettingsTarget kTargets[kRowCount] = {
           SettingsTarget::Cities, SettingsTarget::Rotation, SettingsTarget::Language,
-          SettingsTarget::Calibrate, SettingsTarget::Wifi};
+          SettingsTarget::Calibrate, SettingsTarget::Wifi, SettingsTarget::Firmware};
       return kTargets[row];
     }
   }

@@ -8,6 +8,12 @@
 namespace config {
 
 // ---------------------------------------------------------------------------
+// Firmware version (semantic, "major.minor.patch"). Raise it for every release:
+// tools/release.py reads it and devices update when the published one is newer.
+// ---------------------------------------------------------------------------
+constexpr char kFirmwareVersion[] = "1.0.0";
+
+// ---------------------------------------------------------------------------
 // Display
 // ---------------------------------------------------------------------------
 constexpr uint8_t kScreenRotation = 1;  // landscape, 320 x 240
@@ -71,6 +77,21 @@ constexpr uint32_t kPhotoHintMs = 2000;    // tap-zone hint shown on opening
 // Level 1 looked best on the user's board with PanelGamma::Reselect.
 constexpr uint8_t kPhotoToneLevels = 5;
 constexpr uint8_t kPhotoTone = 1;
+
+// ---------------------------------------------------------------------------
+// OTA firmware updates (GitHub Pages of the project, written by tools/release.py)
+// ---------------------------------------------------------------------------
+// {"version", "url", "size", "md5"}; *.github.io chains to ISRG Root X1, which
+// is already in open_meteo_root_ca.h.
+constexpr char kOtaManifestUrl[] =
+    "https://henrydosg.github.io/CYD_Weather_station/ota/latest.json";
+constexpr uint32_t kOtaFirstCheckMs = 60000;          // after WiFi connects
+constexpr uint32_t kOtaCheckIntervalMs = 86400000UL;  // then once a day
+constexpr uint32_t kOtaStallTimeoutMs = 20000;        // no data while downloading
+constexpr uint32_t kOtaRebootDelayMs = 2000;          // "Restarting..." stays this long
+constexpr uint16_t kOtaChunkBytes = 2048;             // written per loop iteration
+constexpr uint8_t kMaxVersionLen = 15;
+constexpr uint8_t kMaxUrlLen = 159;
 
 // ---------------------------------------------------------------------------
 // Settings (stored in NVS via Preferences)

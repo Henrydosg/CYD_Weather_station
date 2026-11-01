@@ -9,7 +9,7 @@ Usage (from the project root, needs Pillow):
     python tools/preview_screen.py --out preview.png [--scale 2] [--screen main|setup|wifi]
       main:  dashboard (two cities) and the 24 h graph
       setup: settings, city manager, action panel, search keyboard, search results,
-             photo viewer hint and message
+             photo viewer hint and message, firmware update (available, downloading)
       wifi:  WiFi list, password keyboard, connect error
 """
 
@@ -243,15 +243,33 @@ def settings():
     pill(img, 228, 4, 84, 28, "Ảnh", C["Accent"], C["Accent"], True)
     rows = [("Thành phố", "7 / 8", C["Highlight"]), ("Đổi thành phố sau", "20 giây", C["Highlight"]),
             ("Ngôn ngữ", "Tiếng Việt", C["Muted"]), ("Hiệu chuẩn cảm ứng", "", C["Muted"]),
-            ("WiFi", "NhaRieng", C["Ok"])]
+            ("WiFi", "NhaRieng", C["Ok"]), ("Firmware", "Có bản mới v1.1.0", C["Highlight"])]
     for i, (lab, val, col) in enumerate(rows):
-        top = 40 + i * 39
-        mid = top + 17
-        card(img, 6, top, 308, 34)
+        top = 40 + i * 33
+        mid = top + 15
+        card(img, 6, top, 308, 30)
         d = ImageDraw.Draw(img)
         d.text((18, mid), lab, font=F["small"], fill=C["Ink"], anchor="lm")
         d.text((288, mid), val, font=F["small"], fill=col, anchor="rm")
         chevron(d, 302, mid, True, C["Muted"])
+    return img
+
+
+def update_screen(downloading=False):
+    """screen_update.cpp: new version available / downloading"""
+    img, d = new_screen()
+    back_header(img, "Cập nhật firmware")
+    d.text((160, 70), "Phiên bản v1.0.0", font=F["medium"], fill=C["Ink"], anchor="mm")
+    d.text((160, 102), "Có bản mới v1.1.0", font=F["small"], fill=C["Highlight"], anchor="mm")
+    if downloading:
+        bar_w, filled = 260, 260 * 42 // 100
+        d.rectangle((30, 122, 30 + filled - 1, 133), fill=C["Accent"])
+        d.rectangle((30 + filled, 122, 30 + bar_w - 1, 133), fill=C["Track"])
+        d.text((160, 170), "Đang tải 42%", font=F["tiny"], fill=C["Ink"], anchor="mm")
+    d.text((160, 152), "Không rút điện khi đang cập nhật", font=F["tiny"], fill=C["Muted"],
+           anchor="mm")
+    if not downloading:
+        pill(img, 70, 182, 180, 40, "Cập nhật", C["Accent"], C["OnAccent"], False)
     return img
 
 
@@ -446,7 +464,8 @@ SCREENS = {
     "main": lambda: [dashboard(0), dashboard(5), graph()],
     "setup": lambda: [settings(), cities(), cities(panel=True),
                       keyboard("Thêm thành phố", "melbourne", False, "Tìm"), search_results(),
-                      photos_hint(), photos_message()],
+                      photos_hint(), photos_message(), update_screen(),
+                      update_screen(downloading=True)],
     "wifi": lambda: [wifi_list(), keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối"),
                      keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối", "symbols"),
                      connect_failed()],

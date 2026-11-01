@@ -80,6 +80,9 @@ src/
   net/wifi_manager     non-blocking STA: saved networks then secrets.h default, backoff 5-60 s,
                        async scan, user-chosen connect (connectTo) with result for the UI
   net/time_sync        SNTP; UTC epoch for the UI (each city adds its own UTC offset)
+  net/ota_updater      firmware updates over WiFi: manifest check (first after 1 min online,
+                       then daily, or on request), streamed download into the other OTA slot,
+                       MD5 check, restart; OtaStatus (net/ota_status.h) is plain data for the UI
   weather/weather_data.h   provider-independent CityWeather (current, 7 days, 8 x 3 h),
                            GeoResult, FetchStatus / SearchStatus, wmoCategory()
   weather/open_meteo       all cities in one forecast request + one air-quality request
@@ -98,7 +101,8 @@ src/
   ui/ui_controller     owns the screens, routes taps, returns UiCommand to main.cpp
   ui/screen_dashboard  main screen: one city (rotating), details column, 7-day strip
   ui/screen_graph      24 h temperature line + chance of rain for the shown city
-  ui/screen_settings   rows: cities, rotation interval, language, calibration, WiFi
+  ui/screen_settings   rows: cities, rotation interval, language, calibration, WiFi, firmware
+  ui/screen_update     installed version, OTA state, Check / Update button, progress bar
   ui/screen_cities     saved cities, "+ Add", Up / Down / Remove panel
   ui/screen_search     geocoding results with "+" to add
   ui/screen_wifi       scanned networks, 4 per page, signal/lock/saved/connected marks
@@ -124,6 +128,9 @@ tools/
   gen_icons.py         weather icons drawn with Pillow -> RGB565 + alpha arrays
   preview_screen.py    PC previews of all screens with sample data (Pillow)
   make_test_chart.py   320x240 JPEG colour bars + grey ramp for /photos (colour / gamma check)
+  release.py           builds env cyd-release and writes docs/ (OTA manifest + web installer)
+docs/                  GitHub Pages (main branch /docs): index.html web installer (ESP Web Tools),
+                       manifest.json, firmware/*.bin, ota/latest.json - written by release.py
 ```
 
 Data flow per `loop()`: `wifi.update()` → `timeSync.update()` → `weather.update()` →
@@ -166,6 +173,15 @@ weather client (`setCities()` keeps data of cities still in the list).
   Put baseline JPEGs (ideally 320x240) in `/photos` on a FAT32 card.
   Decoding blocks the loop ~0.3-0.5 s per photo (bounded, like an HTTP request).
   `tools/make_test_chart.py` writes colour bars + a grey ramp to check gamma / tone.
+- Firmware updates: bump `config::kFirmwareVersion`, run `python tools/release.py`, commit
+  and push `docs/`. Devices check `config::kOtaManifestUrl` and show "New version" in
+  Settings -> Firmware; the user taps Update (no automatic install). The release env
+  (`RELEASE_BUILD`) compiles without `secrets.h` (release.py verifies the SSID/password are
+  not in the binary) because docs/ is public; such a device starts with no WiFi and joins
+  the network picked on its WiFi screen. While downloading, weather / search / name lookups
+  pause. There is no automatic rollback: a broken release needs the web installer (cable).
+  The OTA download uses the ISRG roots of `open_meteo_root_ca.h` (*.github.io is Let's
+  Encrypt) through `weather/https_json`.
 - Language: `ui/strings.cpp` has one {Vietnamese, English} pair per `Str` id, in enum
   order (checked by a static_assert). Never hard-code UI text in screens. Weather texts are
   local (per WMO code), so changing language needs no refetch.
@@ -194,7 +210,9 @@ weather client (`setCities()` keeps data of cities still in the list).
 - UI preview on PC: `python tools/preview_screen.py --out <png> [--scale 2]
   [--screen main|setup|wifi]` with sample data and the colours read from `theme.h`.
   Keep it in sync with the screens when their layout changes.
-- Partition table is `huge_app.csv` (3 MB app, no OTA) to fit the assets.
+- Partition table is `min_spiffs.csv`: two 1.875 MB OTA app slots (firmware ~1.46 MB,
+  watch the headroom when adding assets). NVS is at 0x9000 as before, so settings survived
+  the switch from `huge_app.csv`.
 - Flicker: the dashboard redraws region by region (no `fillScreen` on rotation or new
   data); WiFi modem sleep is off (its current pulses made the backlight shimmer); panel
   frame rate `config::kPanelFrameRateRtna` (~100 Hz); SPI 40 MHz.

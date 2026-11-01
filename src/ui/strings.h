@@ -82,6 +82,21 @@ enum class Str : uint8_t {
   PhotoNoCard,
   PhotoNoFilesFmt,  // printf format, one %s (folder)
   PhotoError,
+  // Firmware update
+  Firmware,
+  UpdateTitle,
+  UpdateVersionFmt,      // printf format, one %s (installed version)
+  UpdateTapCheck,
+  UpdateChecking,
+  UpdateUpToDate,
+  UpdateAvailableFmt,    // printf format, one %s (published version)
+  UpdateDownloadingFmt,  // printf format, one %u (percent)
+  UpdateFailed,
+  UpdateRestarting,
+  UpdateNoWifi,
+  UpdateKeepPower,
+  UpdateCheck,
+  UpdateInstall,
   Count,
 };
 
