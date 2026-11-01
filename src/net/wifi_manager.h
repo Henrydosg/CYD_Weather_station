@@ -60,6 +60,9 @@ class WifiManager {
   const char* ip() const { return ip_; }
 
   ScanState scanState() const { return scanState_; }
+  // A scan runs or is about to start: the radio is busy, so no HTTPS meanwhile
+  // (a request during a scan fails, and the scan overruns its time limit).
+  bool scanBusy() const { return scanRequested_ || scanState_ == ScanState::Scanning; }
   const WifiScanResults& scanResults() const { return scan_; }
   // Incremented whenever the scan state or results change.
   uint32_t scanVersion() const { return scanVersion_; }

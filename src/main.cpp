@@ -177,17 +177,19 @@ void loop() {
   timeSync.update(wifi.isConnected());
   // While a firmware download runs, nothing else uses the network (RAM for TLS).
   const bool netFree = wifi.isConnected() && !ota.downloading();
-  weather.update(now, netFree);
+  // Background requests also wait for a WiFi scan (the user's search does not).
+  const bool scanning = wifi.scanBusy();
+  weather.update(now, netFree && !scanning);
   geocoder.update(netFree);
   // Name lookups only when no weather fetch or search runs in this iteration.
   const bool otherRequest = weather.status() == FetchStatus::Fetching ||
                             geocoder.status() == SearchStatus::Searching;
-  if (cityNames.update(now, netFree && !otherRequest, settings.cities)) {
+  if (cityNames.update(now, netFree && !scanning && !otherRequest, settings.cities)) {
     ++citiesVersion;
     store.save(settings);
   }
-  ota.update(now, wifi.isConnected(), otherRequest);
-  messages.update(now, netFree, otherRequest);
+  ota.update(now, wifi.isConnected(), otherRequest || scanning);
+  messages.update(now, netFree, otherRequest || scanning);
   backlight.update(now, settings.brightness);
   onConnectAttempt(wifi.attempt());
 

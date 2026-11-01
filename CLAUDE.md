@@ -177,6 +177,10 @@ weather client (`setCities()` keeps data of cities still in the list).
   boot the saved networks are tried in order, then `secrets.h`. The UI only sends
   `UiAction::ScanWifi / ConnectWifi / ForgetWifi`; `main.cpp` drives `WifiManager` and
   saves on `ConnectAttempt::Succeeded`.
+  The radio does one thing at a time: while a scan runs (`WifiManager::scanBusy()`),
+  weather, name lookups, OTA checks and messages wait (an HTTPS request during a scan
+  fails and the scan overruns the library's 6 s limit -> "Scan failed"). An empty scan
+  result is repeated `kWifiEmptyScanRetries` times; boot clears a driver-stored network.
 - Clock: the ":" of the dashboard time blinks once a second (redrawn alone in
   `kHighlight` / `kBackground`, no flicker) to show the firmware is running.
 - Photos: Settings -> "Photos" button (header, top right) sends `UiAction::ScanPhotos`;
