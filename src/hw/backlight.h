@@ -11,6 +11,7 @@ class Backlight {
   // After tft.init() (which switches the pin on as a plain output).
   void begin();
   void update(uint32_t now, Brightness mode);
+  uint8_t percent() const { return pct_; }
 
  private:
   uint8_t targetPct(Brightness mode) const;

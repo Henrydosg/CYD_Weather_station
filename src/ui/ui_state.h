@@ -28,6 +28,7 @@ struct UiState {
   uint32_t citiesVersion;   // changes whenever the city list changes
   uint8_t rotateSec;
   Brightness brightness;
+  uint8_t backlightPct;     // current level (follows the room in Auto)
   const CityWeather* weather;
   FetchStatus fetch;
   uint32_t dataVersion;     // changes whenever any city's weather changes

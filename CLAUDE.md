@@ -198,7 +198,8 @@ weather client (`setCities()` keeps data of cities still in the list).
   YYYY-MM-DD]`, push `docs/message.json` ({id, from, text, show_from, show_until}, id 0 =
   none). The message screen opens over the dashboard, graph or photo viewer (menus wait)
   and stays until OK; the closed id is kept in NVS ("msgseen"). The text is never logged.
-- Brightness: Settings row cycles Auto / High / Medium / Low (NVS "bright"). Auto maps the
+- Brightness: Settings row cycles Auto / High / Medium / Low (NVS "bright"); in Auto it
+  shows the live level ("Auto 55%", `UiState::backlightPct`). Auto maps the
   smoothed LDR reading between `kLdrBrightRaw` and `kLdrDarkRaw` (either order) to
   `kBacklightAutoMinPct`..100 %; logs `[light] raw=` every `kLightLogMs` for tuning.
 - Language: `ui/strings.cpp` has one {Vietnamese, English} pair per `Str` id, in enum

@@ -11,7 +11,7 @@ namespace config {
 // Firmware version (semantic, "major.minor.patch"). Raise it for every release:
 // tools/release.py reads it and devices update when the published one is newer.
 // ---------------------------------------------------------------------------
-constexpr char kFirmwareVersion[] = "1.1.0";
+constexpr char kFirmwareVersion[] = "1.1.1";
 
 // ---------------------------------------------------------------------------
 // Display

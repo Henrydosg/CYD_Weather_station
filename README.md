@@ -78,8 +78,9 @@ chép vào `/photos`; thang xám phải đều từ đen tới trắng.
   xuống); nếu vẫn bệch, tăng `kPhotoTone` (0 – 4) trong `include/config.h`.
 - **Chạm lệch:** Cài đặt → Hiệu chuẩn cảm ứng.
 - **"Không thấy thẻ nhớ":** kiểm tra thẻ FAT32, cắm chặt, rồi mở lại màn Ảnh.
-- **Độ sáng tự động không đúng:** mở Serial Monitor, đọc dòng `[light] raw=...` lúc phòng
-  sáng và lúc che cảm biến (lỗ nhỏ cạnh màn hình), rồi sửa `kLdrBrightRaw` / `kLdrDarkRaw`
+- **Độ sáng tự động không đúng:** ở Cài đặt, dòng Độ sáng hiện mức hiện tại ("Tự động 100%");
+  che cảm biến thì số phải giảm. Nếu không, mở Serial Monitor, đọc dòng `[light] raw=...` lúc
+  phòng sáng và lúc che cảm biến (lỗ nhỏ cạnh màn hình), rồi sửa `kLdrBrightRaw` / `kLdrDarkRaw`
   trong `include/config.h`.
 - **Không có dữ liệu thời tiết:** kiểm tra WiFi trong Cài đặt; log ở Serial Monitor 115200 baud.
 

@@ -38,6 +38,7 @@ const Text kTexts[] = {
     {"Cao", "High"},
     {"Vừa", "Medium"},
     {"Thấp", "Low"},
+    {"Tự động %u%%", "Auto %u%%"},
     {"Hiệu chuẩn cảm ứng", "Calibrate touch"},
     {"WiFi", "WiFi"},
     {"Chưa kết nối", "Not connected"},

@@ -45,6 +45,7 @@ class ScreenSettings {
   char lastSsid_[config::kMaxSsidLen + 1] = "";
   uint8_t lastRotate_ = 0;
   Brightness lastBrightness_ = Brightness::Auto;
+  uint8_t lastBacklightPct_ = 0;
   uint32_t lastCities_ = 0;
   uint32_t lastOta_ = 0;
 };

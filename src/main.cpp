@@ -205,6 +205,7 @@ void loop() {
   state.citiesVersion = citiesVersion;
   state.rotateSec = settings.rotateSec;
   state.brightness = settings.brightness;
+  state.backlightPct = backlight.percent();
   state.weather = weather.cities();
   state.fetch = weather.status();
   state.dataVersion = weather.version();

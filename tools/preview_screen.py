@@ -271,7 +271,7 @@ def settings():
     d.text((204, 18), "EN", font=F["small"], fill=C["Muted"], anchor="mm")
     d.line((190, 12, 190, 23), fill=C["CardBorder"])
     rows = [("Thành phố", "7 / 8", C["Highlight"]), ("Đổi thành phố sau", "20 giây", C["Highlight"]),
-            ("Độ sáng", "Tự động", C["Highlight"]), ("Hiệu chuẩn cảm ứng", "", C["Muted"]),
+            ("Độ sáng", "Tự động 100%", C["Highlight"]), ("Hiệu chuẩn cảm ứng", "", C["Muted"]),
             ("WiFi", "NhaRieng", C["Ok"]), ("Firmware", "Có bản mới v1.1.0", C["Highlight"])]
     for i, (lab, val, col) in enumerate(rows):
         top = 40 + i * 33

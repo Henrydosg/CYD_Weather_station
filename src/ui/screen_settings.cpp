@@ -59,7 +59,10 @@ void ScreenSettings::update(const UiState& state) {
   if (state.rotateSec != lastRotate_) {
     drawRotationRow(state);
   }
-  if (state.brightness != lastBrightness_) {
+  // In Auto the row shows the level as it follows the room (cover the sensor to test).
+  const bool autoMoved =
+      state.brightness == Brightness::Auto && state.backlightPct != lastBacklightPct_;
+  if (state.brightness != lastBrightness_ || autoMoved) {
     drawBrightnessRow(state);
   }
   if (state.citiesVersion != lastCities_) {
@@ -102,9 +105,16 @@ void ScreenSettings::drawRotationRow(const UiState& state) {
 
 void ScreenSettings::drawBrightnessRow(const UiState& state) {
   lastBrightness_ = state.brightness;
-  const int level = static_cast<int>(state.brightness);
-  drawRow(kBrightnessRow, tr(Str::Brightness),
-          tr(static_cast<Str>(static_cast<int>(Str::BrightnessAuto) + level)), kHighlight);
+  lastBacklightPct_ = state.backlightPct;
+  char value[24];
+  if (state.brightness == Brightness::Auto) {
+    snprintf(value, sizeof(value), tr(Str::BrightnessAutoFmt), state.backlightPct);
+  } else {
+    const int level = static_cast<int>(state.brightness);
+    strlcpy(value, tr(static_cast<Str>(static_cast<int>(Str::BrightnessAuto) + level)),
+            sizeof(value));
+  }
+  drawRow(kBrightnessRow, tr(Str::Brightness), value, kHighlight);
 }
 
 void ScreenSettings::drawLanguageToggle() {

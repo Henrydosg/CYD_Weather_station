@@ -30,6 +30,7 @@ enum class Str : uint8_t {
   BrightnessHigh,
   BrightnessMedium,
   BrightnessLow,
+  BrightnessAutoFmt,  // printf: %u current percent
   CalibrateTouch,
   Network,
   NotConnected,
