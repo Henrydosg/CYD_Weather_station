@@ -7,6 +7,10 @@ API key.
 - Tối đa 8 thành phố, tìm và thêm ngay trên máy; màn chính tự đổi thành phố sau 10/20/30/60 giây.
 - Thời tiết hiện tại, chi tiết (mặt trời mọc/lặn, độ ẩm, gió, áp suất, mây, UV, AQI),
   dự báo 7 ngày và đồ thị nhiệt độ + khả năng mưa 24 giờ.
+- Báo mưa sắp tới theo từng 15 phút ("Mưa sau ~25 phút", "Đang mưa, tạnh ~16:30").
+- Lịch âm (ÂL 23/9), ngày rằm / mùng 1, đếm ngược đến Tết; tính ngay trên máy.
+- Độ sáng tự động theo ánh sáng phòng (cảm biến LDR), hoặc Cao / Vừa / Thấp.
+- Lời nhắn từ xa: người viết code gửi một tin, máy hiện thiệp toàn màn hình.
 - Tiếng Việt (tên thành phố có dấu) hoặc tiếng Anh (tên quốc tế).
 - Chọn WiFi trên máy, nhớ tối đa 5 mạng.
 - Xem ảnh JPEG từ thẻ nhớ, tự chuyển ảnh như khung ảnh.
@@ -33,9 +37,14 @@ nạp firmware mới; chỉ mất khi xoá flash.
 |---|---|
 | Màn chính | Dải trên cùng (tên thành phố, giờ) → **Cài đặt**; phần còn lại → **đồ thị 24 giờ**. Mỗi lần chạm, thành phố dừng đổi 60 giây. |
 | Đồ thị | Chạm bất kỳ → về màn chính. |
-| Cài đặt | Thành phố, thời gian đổi thành phố, ngôn ngữ, hiệu chuẩn cảm ứng, WiFi; nút **Ảnh** ở góc phải trên. |
+| Cài đặt | Thành phố, thời gian đổi thành phố, độ sáng, hiệu chuẩn cảm ứng, WiFi, firmware; nút **VI \| EN** (ngôn ngữ) và **Ảnh** ở trên cùng. |
+| Lời nhắn | Hiện khi có tin mới; bấm **Đã đọc** để đóng (không hiện lại). |
 | Thành phố | **+ Thêm** → gõ tên không dấu (ví dụ `da lat`) → **Tìm** → **+** để thêm. Chạm một thành phố để Lên / Xuống / Xoá. |
 | WiFi | Chạm mạng để kết nối (mạng có khoá sẽ hỏi mật khẩu). |
+
+Dòng dưới "Cảm giác" báo mưa trong 3 giờ tới (ước lượng, ở Việt Nam Open-Meteo nội
+suy từ dự báo theo giờ); khi không mưa, dòng này hiện ngày rằm / mùng 1 hoặc số ngày đến
+Tết. Cạnh ngày dương ở góc phải trên là ngày âm lịch.
 
 Dấu `:` ở đồng hồ chớp mỗi giây cho biết máy đang chạy. Để yên ở Cài đặt, danh sách,
 bàn phím hay đồ thị 2 phút thì máy tự về màn chính.
@@ -69,6 +78,9 @@ chép vào `/photos`; thang xám phải đều từ đen tới trắng.
   xuống); nếu vẫn bệch, tăng `kPhotoTone` (0 – 4) trong `include/config.h`.
 - **Chạm lệch:** Cài đặt → Hiệu chuẩn cảm ứng.
 - **"Không thấy thẻ nhớ":** kiểm tra thẻ FAT32, cắm chặt, rồi mở lại màn Ảnh.
+- **Độ sáng tự động không đúng:** mở Serial Monitor, đọc dòng `[light] raw=...` lúc phòng
+  sáng và lúc che cảm biến (lỗ nhỏ cạnh màn hình), rồi sửa `kLdrBrightRaw` / `kLdrDarkRaw`
+  trong `include/config.h`.
 - **Không có dữ liệu thời tiết:** kiểm tra WiFi trong Cài đặt; log ở Serial Monitor 115200 baud.
 
 ## Cập nhật firmware
@@ -89,6 +101,18 @@ máy khởi động lại (khoảng 1 phút). Cài đặt được giữ nguyên
 
 Lần đầu: bật GitHub Pages cho repo (Settings → Pages → Deploy from a branch → `main`,
 thư mục `/docs`). Bản đầu tiên có OTA phải nạp bằng cáp một lần (đổi bảng phân vùng).
+
+## Gửi lời nhắn
+
+```
+python tools/message.py "Chúc mừng sinh nhật bạn!" --from Henry
+python tools/message.py "Chúc mừng năm mới!" --show-from 2027-02-06 --show-until 2027-02-09
+python tools/message.py --clear
+```
+
+Rồi commit và push `docs/message.json`. Máy kiểm tra mỗi 30 phút (GitHub Pages có thể
+trễ thêm 10 phút) và hiện tin cho đến khi bấm **Đã đọc**. Chỉ dùng chữ Việt / ASCII, không
+emoji; tối đa 240 byte. Ngày tính theo giờ Việt Nam.
 
 ## Ghi chú kỹ thuật
 

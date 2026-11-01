@@ -7,9 +7,10 @@ angle are not simulated. Keep it in sync when a screen's layout changes.
 
 Usage (from the project root, needs Pillow):
     python tools/preview_screen.py --out preview.png [--scale 2] [--screen main|setup|wifi]
-      main:  dashboard (two cities) and the 24 h graph
+      main:  dashboard (Tet countdown, rain soon, raining, full moon) and the 24 h graph
       setup: settings, city manager, action panel, search keyboard, search results,
-             photo viewer hint and message, firmware update (available, downloading)
+             photo viewer hint and message, firmware update (available, downloading),
+             remote message
       wifi:  WiFi list, password keyboard, connect error
 """
 
@@ -132,14 +133,14 @@ CITIES = [("TP. Hồ Chí Minh", "Việt Nam"), ("Hà Nội", "Việt Nam"), ("H
           ("Đà Nẵng", "Việt Nam"), ("Đà Lạt", "Lâm Đồng, Việt Nam"),
           ("Calgary", "Alberta, Canada"), ("Melbourne", "Victoria, Úc")]
 WEATHER = {
-    0: dict(time="14:35", date="T7, 31/10/2026", desc="Mây rải rác", icon="kIconPartlyDay", temp=31,
+    0: dict(time="14:35", date="T7, 01/11", lunar="ÂL 23/9", desc="Mây rải rác", icon="kIconPartlyDay", temp=31,
             feels=37, rows=["05:42", "17:39", "74%", "11 km/h ĐN", "1009 hPa", "60%"],
             uv=(8, "Rất cao", 3), aqi=(54, "Trung bình", 1),
             days=[("T7", "31/10", "kIconPartlyDay", 33, 25), ("CN", "1/11", "kIconRain", 31, 25),
                   ("T2", "2/11", "kIconThunder", 30, 24), ("T3", "3/11", "kIconPartlyDay", 32, 25),
                   ("T4", "4/11", "kIconClearDay", 33, 24), ("T5", "5/11", "kIconDrizzle", 31, 25),
                   ("T6", "6/11", "kIconCloudy", 32, 25)]),
-    5: dict(time="01:35", date="T7, 31/10/2026", desc="Tuyết nhẹ", icon="kIconSnow", temp=-3,
+    5: dict(time="01:35", date="T7, 31/10", lunar="ÂL 22/9", desc="Tuyết nhẹ", icon="kIconSnow", temp=-3,
             feels=-9, rows=["08:12", "18:04", "81%", "24 km/h TB", "1021 hPa", "90%"],
             uv=(0, "Thấp", 0), aqi=(18, "Tốt", 0),
             days=[("T7", "31/10", "kIconSnow", 2, -6), ("CN", "1/11", "kIconCloudy", 4, -5),
@@ -157,15 +158,30 @@ LABELS = ["Mặt trời mọc", "Mặt trời lặn", "Độ ẩm", "Gió", "Áp
 # Screens
 # ---------------------------------------------------------------------------
 
-def dashboard(city):
-    """screen_dashboard.cpp"""
+def drop(img, cx, cy, color):
+    """Rain drop before rain notes: triangle tip + circle (screen_dashboard.cpp drawNote)."""
+    s = SUP
+    layer = Image.new("RGBA", (W * s, H * s), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    ld.polygon([((cx - 3) * s, cy * s), ((cx + 3) * s, cy * s), (cx * s, (cy - 6) * s)],
+               fill=color + (255,))
+    ld.ellipse(((cx - 4) * s, (cy - 3) * s, (cx + 4) * s, (cy + 5) * s), fill=color + (255,))
+    small = layer.resize((W, H), Image.LANCZOS)
+    img.paste(small, (0, 0), small)
+
+
+def dashboard(city, note=("Còn 97 ngày đến Tết", False), lunar=None, date=None):
+    """screen_dashboard.cpp; note = (text, rain)"""
     img, d = new_screen()
     name, region = CITIES[city]
     w = WEATHER[city]
     d.text((8, 12), name, font=F["medium"], fill=C["Ink"], anchor="lm")
     d.text((8, 31), region, font=F["tiny"], fill=C["Muted"], anchor="lm")
     d.text((288, 12), w["time"], font=F["medium"], fill=C["Highlight"], anchor="rm")
-    d.text((312, 31), w["date"], font=F["tiny"], fill=C["Highlight"], anchor="rm")
+    lunar, date = lunar or w["lunar"], date or w["date"]
+    d.text((312, 31), lunar, font=F["tiny"], fill=C["Label"], anchor="rm")
+    d.text((312 - d.textlength(lunar, font=F["tiny"]) - 8, 31), date, font=F["tiny"],
+           fill=C["Highlight"], anchor="rm")
     bars(d, 294, 18, 3, C["Ok"])
     d.line((6, 40, 313, 40), fill=C["Line"])
     n = len(CITIES)
@@ -180,6 +196,14 @@ def dashboard(city):
     paste(img, icon(w["icon"]), 2, 66)
     d.text((112, 98), f"{w['temp']}°", font=F["big"], fill=temp_color(w["temp"]), anchor="mm")
     d.text((112, 130), f"Cảm giác {w['feels']}°", font=F["tiny"], fill=C["Feels"], anchor="mm")
+    text, rain = note
+    color = C["Description"] if rain else C["Feels"]
+    x = 76 - (d.textlength(text, font=F["tiny"]) + (12 if rain else 0)) // 2
+    if rain:
+        drop(img, int(x) + 4, 147, color)
+        d = ImageDraw.Draw(img)
+        x += 12
+    d.text((x, 147), text, font=F["tiny"], fill=color, anchor="lm")
 
     values = w["rows"] + [f"{w['uv'][0]} {w['uv'][1]}", f"{w['aqi'][0]} {w['aqi'][1]}"]
     colors = [C["Ink"]] * 6 + [level_color(w["uv"][2]), level_color(w["aqi"][2])]
@@ -241,8 +265,13 @@ def settings():
     img, _ = new_screen()
     back_header(img, "Cài đặt")
     pill(img, 228, 4, 84, 28, "Ảnh", C["Accent"], C["Accent"], True)
+    pill(img, 160, 4, 60, 28, "", C["CardBorder"], C["Ink"], True)
+    d = ImageDraw.Draw(img)
+    d.text((176, 18), "VI", font=F["small"], fill=C["Highlight"], anchor="mm")
+    d.text((204, 18), "EN", font=F["small"], fill=C["Muted"], anchor="mm")
+    d.line((190, 12, 190, 23), fill=C["CardBorder"])
     rows = [("Thành phố", "7 / 8", C["Highlight"]), ("Đổi thành phố sau", "20 giây", C["Highlight"]),
-            ("Ngôn ngữ", "Tiếng Việt", C["Muted"]), ("Hiệu chuẩn cảm ứng", "", C["Muted"]),
+            ("Độ sáng", "Tự động", C["Highlight"]), ("Hiệu chuẩn cảm ứng", "", C["Muted"]),
             ("WiFi", "NhaRieng", C["Ok"]), ("Firmware", "Có bản mới v1.1.0", C["Highlight"])]
     for i, (lab, val, col) in enumerate(rows):
         top = 40 + i * 33
@@ -270,6 +299,34 @@ def update_screen(downloading=False):
            anchor="mm")
     if not downloading:
         pill(img, 70, 182, 180, 40, "Cập nhật", C["Accent"], C["OnAccent"], False)
+    return img
+
+
+def wrap(d, text, fnt, max_w):
+    lines, cur = [], ""
+    for word in text.split():
+        t = (cur + " " + word).strip()
+        if d.textlength(t, font=fnt) <= max_w or not cur:
+            cur = t
+        else:
+            lines.append(cur)
+            cur = word
+    return lines + [cur]
+
+
+def message_screen():
+    """screen_message.cpp"""
+    img, d = new_screen()
+    d.rectangle((12, 9, 37, 26), outline=C["Highlight"], width=2)
+    d.line((13, 10, 25, 19), fill=C["Highlight"], width=2)
+    d.line((36, 10, 25, 19), fill=C["Highlight"], width=2)
+    d.text((48, 18), "Lời nhắn từ Henry", font=F["medium"], fill=C["Highlight"], anchor="lm")
+    d.line((6, 40, 313, 40), fill=C["Line"])
+    text = ("Chúc mừng sinh nhật bạn! Chúc bạn một tuổi mới thật nhiều sức khỏe, "
+            "niềm vui và luôn có ngày nắng đẹp. Hẹn gặp lại cuối tuần nhé!")
+    for i, line in enumerate(wrap(d, text, F["small"], 288)[:6]):
+        d.text((16, 58 + i * 21), line, font=F["small"], fill=C["Ink"], anchor="lm")
+    pill(img, 90, 190, 140, 40, "Đã đọc", C["Accent"], C["OnAccent"], False)
     return img
 
 
@@ -461,11 +518,14 @@ def connect_failed():
 
 
 SCREENS = {
-    "main": lambda: [dashboard(0), dashboard(5), graph()],
+    "main": lambda: [dashboard(0), dashboard(0, ("Mưa sau ~25 phút", True)),
+                     dashboard(0, ("Đang mưa, tạnh ~16:30", True)),
+                     dashboard(0, ("Hôm nay rằm tháng 10", False), "ÂL 15/10", "T3, 24/11"),
+                     dashboard(5, ("Mưa lúc ~16:30", True)), graph()],
     "setup": lambda: [settings(), cities(), cities(panel=True),
                       keyboard("Thêm thành phố", "melbourne", False, "Tìm"), search_results(),
                       photos_hint(), photos_message(), update_screen(),
-                      update_screen(downloading=True)],
+                      update_screen(downloading=True), message_screen()],
     "wifi": lambda: [wifi_list(), keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối"),
                      keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối", "symbols"),
                      connect_failed()],

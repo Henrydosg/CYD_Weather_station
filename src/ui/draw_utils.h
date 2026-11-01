@@ -42,6 +42,12 @@ void drawBackHeader(TFT_eSPI& tft, const char* title, int16_t maxWidth);
 void drawFitted(TFT_eSPI& tft, const char* text, int16_t x, int16_t y, int16_t maxWidth,
                 const uint8_t* large, const uint8_t* small);
 
+// Word-wrapped text with the current font, colour and datum (use a left datum),
+// first line at y, lines lineH apart; breaks at spaces and "\n". Stops after
+// maxLines (the last one ends in "..") and returns the number of lines drawn.
+int drawWrapped(TFT_eSPI& tft, const char* text, int16_t x, int16_t y, int16_t maxWidth,
+                int16_t lineH, int maxLines);
+
 // Simple rectangle hit test.
 inline bool hit(int16_t px, int16_t py, int16_t x, int16_t y, int16_t w, int16_t h) {
   return px >= x && px < x + w && py >= y && py < y + h;

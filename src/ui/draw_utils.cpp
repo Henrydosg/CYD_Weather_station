@@ -14,6 +14,7 @@ constexpr float kChevronHalf = 5.0f;   // half height
 constexpr float kChevronDepth = 4.0f;  // horizontal depth
 constexpr float kChevronStroke = 1.1f;
 constexpr size_t kFitBufLen = 72;  // longest fitted text (city / network names)
+constexpr size_t kWrapLineLen = 160;  // bytes of one wrapped line
 constexpr int16_t kBackChevronX = 14;
 constexpr int16_t kTitleX = 26;
 
@@ -97,6 +98,58 @@ void drawFitted(TFT_eSPI& tft, const char* text, int16_t x, int16_t y, int16_t m
     } while (true);
   }
   tft.drawString(buf, x, y);
+}
+
+int drawWrapped(TFT_eSPI& tft, const char* text, int16_t x, int16_t y, int16_t maxWidth,
+                int16_t lineH, int maxLines) {
+  char line[kWrapLineLen] = "";
+  char probe[kWrapLineLen];
+  int lines = 0;
+  const char* p = text;
+  while (lines < maxLines) {
+    // Next word (up to a space, a newline or the end)
+    const char* end = p;
+    while (*end != '\0' && *end != ' ' && *end != '\n') {
+      ++end;
+    }
+    const size_t wordLen = static_cast<size_t>(end - p);
+    if (line[0] == '\0') {
+      snprintf(probe, sizeof(probe), "%.*s", static_cast<int>(wordLen), p);
+    } else {
+      snprintf(probe, sizeof(probe), "%s %.*s", line, static_cast<int>(wordLen), p);
+    }
+    const bool fits = tft.textWidth(probe) <= maxWidth || line[0] == '\0';
+    if (fits) {
+      strlcpy(line, probe, sizeof(line));
+      p = end;
+    }
+    const bool lineDone = !fits || *p == '\n' || *p == '\0';
+    if (lineDone) {
+      const bool last = lines == maxLines - 1;
+      const bool more = !fits || (*p != '\0' && p[1] != '\0');
+      if (last && more) {
+        // Out of lines: trim and append "..".
+        do {
+          snprintf(probe, sizeof(probe), "%s..", line);
+          if (tft.textWidth(probe) <= maxWidth || line[0] == '\0') {
+            break;
+          }
+          popUtf8Char(line);
+        } while (true);
+        strlcpy(line, probe, sizeof(line));
+      }
+      tft.drawString(line, x, y + lines * lineH);
+      ++lines;
+      line[0] = '\0';
+      if (*p == '\0') {
+        break;
+      }
+    }
+    if (fits && (*p == ' ' || *p == '\n')) {
+      ++p;
+    }
+  }
+  return lines;
 }
 
 void drawBackHeader(TFT_eSPI& tft, const char* title, int16_t maxWidth) {

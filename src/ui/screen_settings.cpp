@@ -18,14 +18,19 @@ constexpr int16_t kTextX = kRowX + 12;
 constexpr int16_t kChevronX = kRowX + kRowW - 12;
 constexpr int16_t kValueRightX = kChevronX - 14;
 constexpr int16_t kValueMaxW = 130;
-constexpr int16_t kTitleMaxW = 200;
+constexpr int16_t kTitleMaxW = 120;
 // "Photos" button in the header (top right)
 constexpr int16_t kPhotosW = 84, kPhotosH = 28;
 constexpr int16_t kPhotosX = config::kScreenWidth - 8 - kPhotosW, kPhotosY = 4;
 constexpr int16_t kPhotosHitX = kPhotosX - 10;
+// "VI | EN" toggle left of it; the current language is highlighted
+constexpr int16_t kLangW = 60, kLangH = 28;
+constexpr int16_t kLangX = kPhotosX - 8 - kLangW, kLangY = 4;
+constexpr int16_t kLangHitX = kLangX - 10;
+constexpr int16_t kLangRuleInset = 8;
 
 enum Row : int {
-  kCitiesRow, kRotationRow, kLanguageRow, kCalibrateRow, kWifiRow, kFirmwareRow, kRowCount
+  kCitiesRow, kRotationRow, kBrightnessRow, kCalibrateRow, kWifiRow, kFirmwareRow, kRowCount
 };
 
 int16_t rowTop(int row) { return kRowY0 + row * kRowPitch; }
@@ -38,9 +43,10 @@ void ScreenSettings::show(const UiState& state) {
   useFont(tft_, kFontSmall);
   ui::drawPill(tft_, kPhotosX, kPhotosY, kPhotosW, kPhotosH, tr(Str::Photos), kAccent, kAccent,
                true);
+  drawLanguageToggle();
   drawCitiesRow(state);
   drawRotationRow(state);
-  drawRow(kLanguageRow, tr(Str::Language), tr(Str::LanguageName), kMuted);
+  drawBrightnessRow(state);
   drawRow(kCalibrateRow, tr(Str::CalibrateTouch), "", kMuted);
   drawWifiRow(state);
   drawFirmwareRow(state);
@@ -52,6 +58,9 @@ void ScreenSettings::update(const UiState& state) {
   }
   if (state.rotateSec != lastRotate_) {
     drawRotationRow(state);
+  }
+  if (state.brightness != lastBrightness_) {
+    drawBrightnessRow(state);
   }
   if (state.citiesVersion != lastCities_) {
     drawCitiesRow(state);
@@ -91,6 +100,27 @@ void ScreenSettings::drawRotationRow(const UiState& state) {
   drawRow(kRotationRow, tr(Str::RotateEvery), value, kHighlight);
 }
 
+void ScreenSettings::drawBrightnessRow(const UiState& state) {
+  lastBrightness_ = state.brightness;
+  const int level = static_cast<int>(state.brightness);
+  drawRow(kBrightnessRow, tr(Str::Brightness),
+          tr(static_cast<Str>(static_cast<int>(Str::BrightnessAuto) + level)), kHighlight);
+}
+
+void ScreenSettings::drawLanguageToggle() {
+  useFont(tft_, kFontSmall);
+  ui::drawPill(tft_, kLangX, kLangY, kLangW, kLangH, "", kCardBorder, kInk, true);
+  const bool english = currentLanguage() == Language::English;
+  const int16_t mid = kLangY + kLangH / 2;
+  tft_.setTextDatum(MC_DATUM);
+  tft_.setTextColor(english ? kMuted : kHighlight, kBackground);
+  tft_.drawString(tr(Str::LanguageVi), kLangX + kLangW / 4 + 1, mid);
+  tft_.setTextColor(english ? kHighlight : kMuted, kBackground);
+  tft_.drawString(tr(Str::LanguageEn), kLangX + 3 * kLangW / 4 - 1, mid);
+  tft_.drawFastVLine(kLangX + kLangW / 2, kLangY + kLangRuleInset, kLangH - 2 * kLangRuleInset,
+                     kCardBorder);
+}
+
 void ScreenSettings::drawWifiRow(const UiState& state) {
   lastWifi_ = state.wifi;
   strlcpy(lastSsid_, state.ssid, sizeof(lastSsid_));
@@ -123,12 +153,15 @@ SettingsTarget ScreenSettings::hitTest(int16_t x, int16_t y) const {
   if (ui::hit(x, y, kPhotosHitX, 0, config::kScreenWidth - kPhotosHitX, ui::kBackHitH)) {
     return SettingsTarget::Photos;
   }
+  if (ui::hit(x, y, kLangHitX, 0, kPhotosHitX - kLangHitX, ui::kBackHitH)) {
+    return SettingsTarget::Language;
+  }
   // Rows plus half of the gap around them
   const int16_t gap = kRowPitch - kRowH;
   for (int row = 0; row < kRowCount; ++row) {
     if (ui::hit(x, y, kRowX, rowTop(row) - gap / 2, kRowW, kRowPitch)) {
       static const SettingsTarget kTargets[kRowCount] = {
-          SettingsTarget::Cities, SettingsTarget::Rotation, SettingsTarget::Language,
+          SettingsTarget::Cities, SettingsTarget::Rotation, SettingsTarget::Brightness,
           SettingsTarget::Calibrate, SettingsTarget::Wifi, SettingsTarget::Firmware};
       return kTargets[row];
     }

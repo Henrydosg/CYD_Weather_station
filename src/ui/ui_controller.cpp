@@ -31,7 +31,8 @@ UiController::UiController(TFT_eSPI& tft)
       cities_(tft),
       search_(tft),
       photos_(tft),
-      update_(tft) {}
+      update_(tft),
+      message_(tft) {}
 
 void UiController::begin(const Settings& settings) {
   tft_.setRotation(config::kScreenRotation);
@@ -82,9 +83,20 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
   const bool installing = state.ota != nullptr && (state.ota->state == OtaState::Downloading ||
                                                    state.ota->state == OtaState::Restarting);
   const bool staysOpen = screen_ == Screen::Dashboard || screen_ == Screen::Photos ||
-                         screen_ == Screen::Calibration || (screen_ == Screen::Update && installing);
+                         screen_ == Screen::Calibration || screen_ == Screen::Message ||
+                         (screen_ == Screen::Update && installing);
   if (!staysOpen && now - lastTapAt_ >= config::kMenuIdleMs) {
     showDashboard();
+  }
+  // A new remote message opens over the weather screens and the photo frame;
+  // in menus it waits until they close (or time out).
+  const bool idleScreen =
+      screen_ == Screen::Dashboard || screen_ == Screen::Graph || screen_ == Screen::Photos;
+  if (state.message != nullptr && state.message->id != messageShown_ && idleScreen) {
+    messageShown_ = state.message->id;
+    screen_ = Screen::Message;
+    message_.show(*state.message);
+    return UiCommand{};
   }
   switch (screen_) {
     case Screen::Dashboard:
@@ -115,6 +127,15 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
       return UiCommand{};
     case Screen::Update:
       return updateUpdate(state, touch);
+    case Screen::Message: {
+      UiCommand cmd;
+      if (touch.tapped && message_.hitDone(touch.x, touch.y)) {
+        cmd.action = UiAction::MessageRead;
+        cmd.id = messageShown_;
+        showDashboard();
+      }
+      return cmd;
+    }
     case Screen::Calibration: {
       UiCommand cmd;
       calibration_.handleTap(touch, now);
@@ -183,6 +204,10 @@ UiCommand UiController::updateSettings(const UiState& state, const TouchEvent& t
           currentLanguage() == Language::English ? Language::Vietnamese : Language::English;
       setLanguage(cmd.language);
       showSettings(state);
+      break;
+    case SettingsTarget::Brightness:
+      cmd.action = UiAction::SetBrightness;
+      cmd.value = (static_cast<uint8_t>(state.brightness) + 1) % kBrightnessCount;
       break;
     case SettingsTarget::Calibrate:
       showCalibration(Screen::Settings);

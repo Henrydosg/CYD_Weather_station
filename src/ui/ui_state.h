@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include "../net/ota_status.h"
+#include "../net/remote_message.h"
 #include "../net/wifi_manager.h"
 #include "../photos/photo_library.h"
 #include "../settings/settings.h"
@@ -26,6 +27,7 @@ struct UiState {
   const SavedCities* cities;
   uint32_t citiesVersion;   // changes whenever the city list changes
   uint8_t rotateSec;
+  Brightness brightness;
   const CityWeather* weather;
   FetchStatus fetch;
   uint32_t dataVersion;     // changes whenever any city's weather changes
@@ -38,6 +40,8 @@ struct UiState {
   const PhotoList* photos;
   // Firmware update
   const OtaStatus* ota;
+  // Remote message, nullptr when there is none to show (new and in its dates)
+  const RemoteMessage* message;
   // Clock
   bool timeValid;
   time_t utcNow;            // valid when timeValid
@@ -51,6 +55,7 @@ enum class UiAction : uint8_t {
   ConnectWifi,       // see UiCommand::ssid / password
   ForgetWifi,        // see UiCommand::ssid
   SetRotation,       // see UiCommand::value (seconds)
+  SetBrightness,     // see UiCommand::value (Brightness)
   SearchCity,        // see UiCommand::text
   AddCity,           // see UiCommand::index (into the search results)
   MoveCity,          // see UiCommand::index / delta
@@ -58,6 +63,7 @@ enum class UiAction : uint8_t {
   ScanPhotos,        // (re)mount the SD card and list the photos
   CheckUpdate,       // look for a newer firmware now
   InstallUpdate,     // download and install OtaStatus::latest
+  MessageRead,       // the user closed the remote message (see UiCommand::id)
 };
 
 struct UiCommand {
@@ -70,4 +76,5 @@ struct UiCommand {
   uint8_t index = 0;
   int8_t delta = 0;
   uint8_t value = 0;
+  uint32_t id = 0;
 };

@@ -1,5 +1,6 @@
-// Settings screen: one row each for cities, rotation interval, language,
-// touch calibration, WiFi and firmware; "Photos" button in the header.
+// Settings screen: one row each for cities, rotation interval, brightness,
+// touch calibration, WiFi and firmware; "VI | EN" language toggle and "Photos"
+// button in the header.
 #pragma once
 
 #include <TFT_eSPI.h>
@@ -12,6 +13,7 @@ enum class SettingsTarget : uint8_t {
   Cities,
   Rotation,  // cycles through config::kRotateChoicesSec
   Language,  // toggles Vietnamese / English
+  Brightness,  // cycles Auto / High / Medium / Low
   Calibrate,
   Wifi,
   Firmware,
@@ -33,6 +35,8 @@ class ScreenSettings {
   void drawRow(int row, const char* label, const char* value, uint16_t valueColor);
   void drawCitiesRow(const UiState& state);
   void drawRotationRow(const UiState& state);
+  void drawBrightnessRow(const UiState& state);
+  void drawLanguageToggle();
   void drawWifiRow(const UiState& state);
   void drawFirmwareRow(const UiState& state);
 
@@ -40,6 +44,7 @@ class ScreenSettings {
   WifiState lastWifi_ = WifiState::Idle;
   char lastSsid_[config::kMaxSsidLen + 1] = "";
   uint8_t lastRotate_ = 0;
+  Brightness lastBrightness_ = Brightness::Auto;
   uint32_t lastCities_ = 0;
   uint32_t lastOta_ = 0;
 };

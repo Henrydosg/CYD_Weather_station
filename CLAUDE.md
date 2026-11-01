@@ -44,14 +44,14 @@ git-ignored and must never be committed. Never print WiFi passwords to Serial or
 | TFT CS             | 15   |                                            |
 | TFT DC             | 2    |                                            |
 | TFT RST            | -1   | tied to EN                                 |
-| TFT backlight      | 21   | active HIGH, turned on by `tft.init()`     |
+| TFT backlight      | 21   | active HIGH, LEDC PWM (`hw/backlight`)     |
 | Touch CLK          | 25   | bit-banged SPI (`ui/touch_input`)          |
 | Touch MOSI         | 32   |                                            |
 | Touch MISO         | 39   | input only                                 |
 | Touch CS           | 33   |                                            |
 | Touch IRQ          | 36   | input only, low when touched               |
 | RGB LED R / G / B  | 4 / 16 / 17 | active LOW (not used yet)           |
-| LDR                | 34   | ADC input (not used yet)                   |
+| LDR                | 34   | ADC1, 0 dB attenuation, auto brightness    |
 | Speaker            | 26   | DAC (not used yet)                         |
 | SD card SCK/MISO/MOSI/CS | 18 / 19 / 23 / 5 | VSPI, photo viewer   |
 
@@ -79,6 +79,8 @@ src/
   main.cpp             setup()/loop() only: creates modules and wires them together
   net/wifi_manager     non-blocking STA: saved networks then secrets.h default, backoff 5-60 s,
                        async scan, user-chosen connect (connectTo) with result for the UI
+  net/remote_message   remote note from docs/message.json (every 30 min), RemoteMessage +
+                       messageDue() (dates, not yet closed)
   net/time_sync        SNTP; UTC epoch for the UI (each city adds its own UTC offset)
   net/ota_updater      firmware updates over WiFi: manifest check (first after 1 min online,
                        then daily, or on request), streamed download into the other OTA slot,
@@ -91,6 +93,11 @@ src/
   weather/city_names       fills each saved city's name in the other language (/v1/get by id)
   weather/https_json       HTTPS GET with CA check, filtered streaming JSON parse
   weather/wmo_codes        WMO weather code -> WeatherCategory (icon)
+  weather/nowcast          rainOutlook(): rain soon / raining until / continues, from the
+                           15-minute precipitation (minutely_15, kNowcastSlots)
+  calendar/lunar_calendar  Vietnamese lunar date (new moons / solar terms, UTC+7) and days
+                           to Tet; double precision, so the dashboard caches it per date
+  hw/backlight             LEDC PWM backlight: Auto (LDR, smoothed, fades) or fixed levels
   weather/open_meteo_root_ca.h  ISRG Root X1 + X2 (Let's Encrypt) for *.open-meteo.com
   settings/settings.h      Settings / Language / TouchCalibration / SavedNetworks /
                            SavedCities (plain data)
@@ -101,7 +108,9 @@ src/
   ui/ui_controller     owns the screens, routes taps, returns UiCommand to main.cpp
   ui/screen_dashboard  main screen: one city (rotating), details column, 7-day strip
   ui/screen_graph      24 h temperature line + chance of rain for the shown city
-  ui/screen_settings   rows: cities, rotation interval, language, calibration, WiFi, firmware
+  ui/screen_settings   rows: cities, rotation, brightness, calibration, WiFi, firmware;
+                       header: "VI | EN" language toggle, "Photos" button
+  ui/screen_message    remote message full screen (envelope, wrapped text, OK)
   ui/screen_update     installed version, OTA state, Check / Update button, progress bar
   ui/screen_cities     saved cities, "+ Add", Up / Down / Remove panel
   ui/screen_search     geocoding results with "+" to add
@@ -128,6 +137,7 @@ tools/
   gen_icons.py         weather icons drawn with Pillow -> RGB565 + alpha arrays
   preview_screen.py    PC previews of all screens with sample data (Pillow)
   make_test_chart.py   320x240 JPEG colour bars + grey ramp for /photos (colour / gamma check)
+  message.py           writes docs/message.json (checks glyphs, UTF-8 length, dates UTC+7)
   release.py           builds env cyd-release and writes docs/ (OTA manifest + web installer)
 docs/                  GitHub Pages (main branch /docs): index.html web installer (ESP Web Tools),
                        manifest.json, firmware/*.bin, ota/latest.json - written by release.py
@@ -141,7 +151,9 @@ weather client (`setCities()` keeps data of cities still in the list).
 ## Screens, touch and settings
 
 - Main (dashboard): shows one city and moves to the next every `rotateSec` (10/20/30/60 s,
-  Settings). Header shows the city's local time (UTC + Open-Meteo `utc_offset_seconds`) and
+  Settings). Date line: "T7, 01/11" + lunar "ÂL 23/9". Note line under "feels like":
+  rain nowcast first (`rainOutlook`), else Tet day / full moon / lunar month start / days to
+  Tet; redrawn only when its text changes. Header shows the city's local time (UTC + Open-Meteo `utc_offset_seconds`) and
   one dot per city. Tap the header for Settings, anywhere else for the 24 h graph; any tap
   pauses the rotation for `config::kRotatePauseMs`. Tap the graph to go back. Settings,
   lists, keyboard and the graph return to the main screen after `config::kMenuIdleMs`
@@ -182,6 +194,13 @@ weather client (`setCities()` keeps data of cities still in the list).
   pause. There is no automatic rollback: a broken release needs the web installer (cable).
   The OTA download uses the ISRG roots of `open_meteo_root_ca.h` (*.github.io is Let's
   Encrypt) through `weather/https_json`.
+- Remote message: `python tools/message.py "text" --from X [--show-from/--show-until
+  YYYY-MM-DD]`, push `docs/message.json` ({id, from, text, show_from, show_until}, id 0 =
+  none). The message screen opens over the dashboard, graph or photo viewer (menus wait)
+  and stays until OK; the closed id is kept in NVS ("msgseen"). The text is never logged.
+- Brightness: Settings row cycles Auto / High / Medium / Low (NVS "bright"). Auto maps the
+  smoothed LDR reading between `kLdrBrightRaw` and `kLdrDarkRaw` (either order) to
+  `kBacklightAutoMinPct`..100 %; logs `[light] raw=` every `kLightLogMs` for tuning.
 - Language: `ui/strings.cpp` has one {Vietnamese, English} pair per `Str` id, in enum
   order (checked by a static_assert). Never hard-code UI text in screens. Weather texts are
   local (per WMO code), so changing language needs no refetch.
@@ -210,7 +229,7 @@ weather client (`setCities()` keeps data of cities still in the list).
 - UI preview on PC: `python tools/preview_screen.py --out <png> [--scale 2]
   [--screen main|setup|wifi]` with sample data and the colours read from `theme.h`.
   Keep it in sync with the screens when their layout changes.
-- Partition table is `min_spiffs.csv`: two 1.875 MB OTA app slots (firmware ~1.46 MB,
+- Partition table is `min_spiffs.csv`: two 1.875 MB OTA app slots (firmware ~1.48 MB,
   watch the headroom when adding assets). NVS is at 0x9000 as before, so settings survived
   the switch from `huge_app.csv`.
 - Flicker: the dashboard redraws region by region (no `fillScreen` on rotation or new

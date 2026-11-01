@@ -24,6 +24,8 @@ constexpr int16_t kRegionMidY = 31, kRegionMaxW = 170;
 constexpr int16_t kTimeRightX = 288, kTimeMidY = 12;
 constexpr int16_t kBarsX = 294, kBarsBottom = 18;
 constexpr int16_t kDateRightX = 312, kDateMidY = 31;
+constexpr int16_t kLunarGap = 8;   // between the date and the lunar date
+constexpr int16_t kRegionGap = 6;  // between the region and the date
 constexpr int16_t kHeaderH = 40;  // also the tap area for Settings
 constexpr int16_t kRuleY = 40;
 constexpr int16_t kDotPitch = 10, kDotR = 2, kDotActiveR = 3, kDotsPad = 6;
@@ -35,6 +37,12 @@ constexpr int16_t kDescMidX = 76, kDescMidY = 54, kDescMaxW = 148;
 constexpr int16_t kIconX = 2, kIconY = 66;
 constexpr int16_t kTempMidX = 112, kTempMidY = 98;
 constexpr int16_t kFeelsMidY = 130;
+// Note line (rain / lunar), with a rain drop before rain notes
+constexpr int16_t kNoteTop = 140, kNoteH = 16, kNoteMidY = 147;
+constexpr int16_t kDropW = 12, kDropR = 4, kDropTip = 6;
+constexpr uint32_t kSecondsPerMinute = 60;
+constexpr uint32_t kRoundMinutes = 5;  // "~25 min"
+constexpr int kFullMoonDay = 15;
 
 // Details (right)
 constexpr int16_t kColonX = 230;
@@ -63,6 +71,14 @@ bool cityTime(const UiState& s, const CityWeather* w, struct tm& out) {
   const time_t t = s.utcNow + w->utcOffsetSec;
   gmtime_r(&t, &out);
   return true;
+}
+
+// Local wall-clock time of a UTC instant in a city.
+struct tm localTime(uint32_t utc, int32_t offsetSec) {
+  const time_t t = static_cast<time_t>(utc) + offsetSec;
+  struct tm out;
+  gmtime_r(&t, &out);
+  return out;
 }
 
 void formatMinutes(char* buf, size_t size, int16_t minutes) {
@@ -107,6 +123,7 @@ void ScreenDashboard::redraw(const UiState& s, uint32_t now) {
     drawWaiting(s);
   } else {
     drawCurrent(*w);
+    drawNote(s, true);
     drawDetails(*w);
     drawDays(*w);
   }
@@ -138,6 +155,7 @@ void ScreenDashboard::update(const UiState& s, uint32_t now) {
     lastWifi_ = s.wifi;
     lastBars_ = bars;
     drawHeader(s);
+    drawNote(s, false);  // rain minutes, the day of the lunar month
   }
   // Blinking ":" shows the clock (and the firmware) is running.
   const bool colonOn = s.utcNow % 2 == 0;
@@ -169,14 +187,12 @@ void ScreenDashboard::drawHeader(const UiState& s) {
   const Language lang = currentLanguage();
   ui::drawFitted(tft_, c != nullptr ? cityName(*c, lang) : "--", kNameX, kNameMidY, kNameMaxW,
                  kFontMedium, kFontSmall);
-  tft_.setTextColor(kMuted, kBackground);
-  ui::drawFitted(tft_, c != nullptr ? cityRegion(*c, lang) : "", kNameX, kRegionMidY,
-                 kRegionMaxW, kFontTiny, kFontTiny);
 
   // City local time and date
   struct tm t;
   char buf[24];
   const bool timeOk = cityTime(s, w, t);
+  int16_t regionMaxW = kRegionMaxW;
   lastMinute_ = timeOk ? t.tm_min : -1;
   colonOn_ = true;  // the full time string below includes the ":"
   if (timeOk) {
@@ -189,12 +205,28 @@ void ScreenDashboard::drawHeader(const UiState& s) {
   tft_.setTextDatum(MR_DATUM);
   tft_.drawString(buf, kTimeRightX, kTimeMidY);
   if (timeOk) {
-    snprintf(buf, sizeof(buf), "%s, %02d/%02d/%04d", weekdayShort(t.tm_wday), t.tm_mday,
-             t.tm_mon + 1, t.tm_year + 1900);
+    // "T7, 01/11" in yellow, then the lunar date "ÂL 23/9" in the label colour
+    updateLunar(t);
+    char lunar[24];
+    snprintf(lunar, sizeof(lunar), tr(Str::LunarFmt), lunar_.day, lunar_.month,
+             lunar_.leap ? tr(Str::LunarLeap) : "");
+    snprintf(buf, sizeof(buf), "%s, %02d/%02d", weekdayShort(t.tm_wday), t.tm_mday,
+             t.tm_mon + 1);
     useFont(tft_, kFontTiny);
+    tft_.setTextColor(kLabel, kBackground);
+    tft_.drawString(lunar, kDateRightX, kDateMidY);
+    const int16_t dateRight = kDateRightX - tft_.textWidth(lunar) - kLunarGap;
     tft_.setTextColor(kHighlight, kBackground);
-    tft_.drawString(buf, kDateRightX, kDateMidY);
+    tft_.drawString(buf, dateRight, kDateMidY);
+    const int16_t dateLeft = dateRight - tft_.textWidth(buf);
+    if (dateLeft - kRegionGap - kNameX < regionMaxW) {
+      regionMaxW = dateLeft - kRegionGap - kNameX;
+    }
   }
+  tft_.setTextDatum(ML_DATUM);
+  tft_.setTextColor(kMuted, kBackground);
+  ui::drawFitted(tft_, c != nullptr ? cityRegion(*c, lang) : "", kNameX, kRegionMidY,
+                 regionMaxW, kFontTiny, kFontTiny);
 
   // Signal: green bars, one yellow / red bar while (re)connecting.
   uint16_t on = kOk;
@@ -250,6 +282,85 @@ void ScreenDashboard::drawCurrent(const CityWeather& w) {
   useFont(tft_, kFontTiny);
   tft_.setTextColor(kFeels, kBackground);
   tft_.drawString(buf, kTempMidX, kFeelsMidY);
+}
+
+void ScreenDashboard::updateLunar(const struct tm& t) {
+  const int32_t key = (t.tm_year + 1900) * 10000 + (t.tm_mon + 1) * 100 + t.tm_mday;
+  if (key == lunarKey_) {
+    return;
+  }
+  lunarKey_ = key;
+  lunar_ = solarToLunar(t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
+  tetDays_ = daysToTet(t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
+}
+
+void ScreenDashboard::drawNote(const UiState& s, bool force) {
+  char text[sizeof(lastNote_)] = "";
+  bool rain = false;
+  const CityWeather* w = current(s, city_);
+  struct tm t;
+  if (cityTime(s, w, t)) {
+    const uint32_t now = static_cast<uint32_t>(s.utcNow);
+    const RainOutlook outlook = rainOutlook(*w, now);
+    const struct tm at = localTime(outlook.atUtc, w->utcOffsetSec);
+    rain = outlook.kind != RainKind::None;
+    switch (outlook.kind) {
+      case RainKind::Soon: {
+        const uint32_t minutes =
+            (outlook.atUtc - now + kSecondsPerMinute - 1) / kSecondsPerMinute;
+        if (minutes < static_cast<uint32_t>(kMinutesPerHour)) {
+          uint32_t rounded = (minutes + kRoundMinutes - 1) / kRoundMinutes * kRoundMinutes;
+          if (rounded < kRoundMinutes) {
+            rounded = kRoundMinutes;
+          }
+          snprintf(text, sizeof(text), tr(Str::RainSoonFmt), static_cast<unsigned>(rounded));
+        } else {
+          snprintf(text, sizeof(text), tr(Str::RainAtFmt), at.tm_hour, at.tm_min);
+        }
+        break;
+      }
+      case RainKind::Raining:
+        snprintf(text, sizeof(text), tr(Str::RainStopsFmt), at.tm_hour, at.tm_min);
+        break;
+      case RainKind::Continues:
+        strlcpy(text, tr(Str::RainContinues), sizeof(text));
+        break;
+      case RainKind::None:
+        updateLunar(t);
+        if (lunar_.day == 1 && lunar_.month == 1 && !lunar_.leap) {
+          strlcpy(text, tr(Str::TetToday), sizeof(text));
+        } else if (lunar_.day == kFullMoonDay) {
+          snprintf(text, sizeof(text), tr(Str::FullMoonFmt), lunar_.month);
+        } else if (lunar_.day == 1) {
+          snprintf(text, sizeof(text), tr(Str::NewMoonFmt), lunar_.month);
+        } else if (tetDays_ > 0) {
+          snprintf(text, sizeof(text), tr(Str::TetCountdownFmt), tetDays_);
+        }
+        break;
+    }
+  }
+  if (!force && strcmp(text, lastNote_) == 0) {
+    return;
+  }
+  strlcpy(lastNote_, text, sizeof(lastNote_));
+  tft_.fillRect(0, kNoteTop, kLeftW, kNoteH, kBackground);
+  if (text[0] == '\0') {
+    return;
+  }
+  useFont(tft_, kFontTiny);
+  const uint16_t color = rain ? kDescription : kFeels;
+  const int16_t textW = tft_.textWidth(text);
+  int16_t x = kDescMidX - (textW + (rain ? kDropW : 0)) / 2;
+  if (rain) {
+    const int16_t cx = x + kDropR;
+    tft_.fillTriangle(cx - kDropR + 1, kNoteMidY, cx + kDropR - 1, kNoteMidY, cx,
+                      kNoteMidY - kDropTip, color);
+    tft_.fillSmoothCircle(cx, kNoteMidY + 1, kDropR, color, kBackground);
+    x += kDropW;
+  }
+  tft_.setTextColor(color, kBackground);
+  tft_.setTextDatum(ML_DATUM);
+  tft_.drawString(text, x, kNoteMidY);
 }
 
 void ScreenDashboard::drawDetails(const CityWeather& w) {

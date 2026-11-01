@@ -16,6 +16,10 @@ inline const char* languageCode(Language lang) {
   return lang == Language::English ? "en" : "vi";
 }
 
+// Backlight: following the light sensor, or a fixed level (config::kBacklight*Pct).
+enum class Brightness : uint8_t { Auto, High, Medium, Low };
+constexpr uint8_t kBrightnessCount = 4;
+
 // Raw XPT2046 readings at the screen edges (x = 0 / width-1, y = 0 / height-1).
 // Edges may be "reversed" (left > right) when an axis is mirrored.
 struct TouchCalibration {
@@ -83,4 +87,6 @@ struct Settings {
   SavedNetworks networks;
   SavedCities cities;    // never empty (defaults to config::kDefaultCity*)
   uint8_t rotateSec;     // one of config::kRotateChoicesSec
+  Brightness brightness;
+  uint32_t messageSeen;  // id of the last remote message the user closed, 0 = none
 };

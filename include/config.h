@@ -11,7 +11,7 @@ namespace config {
 // Firmware version (semantic, "major.minor.patch"). Raise it for every release:
 // tools/release.py reads it and devices update when the published one is newer.
 // ---------------------------------------------------------------------------
-constexpr char kFirmwareVersion[] = "1.0.0";
+constexpr char kFirmwareVersion[] = "1.1.0";
 
 // ---------------------------------------------------------------------------
 // Display
@@ -36,6 +36,29 @@ constexpr uint32_t kGammaFixSettleMs = 120;  // Reselect, once during setup()
 constexpr uint8_t kPanelFrameRateRtna = 0x13;
 constexpr int16_t kScreenWidth = 320;
 constexpr int16_t kScreenHeight = 240;
+
+// ---------------------------------------------------------------------------
+// Backlight (LEDC PWM on the TFT_BL pin) and the light sensor (LDR)
+// ---------------------------------------------------------------------------
+constexpr uint8_t kBacklightPin = 21;  // same as TFT_BL in platformio.ini
+constexpr uint8_t kBacklightPwmChannel = 7;
+constexpr uint32_t kBacklightPwmHz = 5000;
+constexpr uint8_t kBacklightPwmBits = 8;
+// Fixed levels of Settings -> Brightness (High, Medium, Low), percent.
+constexpr uint8_t kBacklightHighPct = 100;
+constexpr uint8_t kBacklightMediumPct = 55;
+constexpr uint8_t kBacklightLowPct = 20;
+// Auto: dark room -> kBacklightAutoMinPct, bright room -> 100 %.
+constexpr uint8_t kBacklightAutoMinPct = 10;
+constexpr uint8_t kLdrPin = 34;  // ADC1, input only
+// Raw ADC readings (0 dB attenuation) of a bright and a dark room; linear in
+// between. The "[light] raw=" log line shows the value to tune these.
+constexpr uint16_t kLdrBrightRaw = 20;
+constexpr uint16_t kLdrDarkRaw = 400;
+constexpr uint32_t kLightSampleMs = 250;
+constexpr float kLightSmoothing = 0.1f;  // EMA weight of each sample (~2.5 s)
+constexpr uint8_t kBacklightFadeStepPct = 2;  // per sample, so changes fade in
+constexpr uint32_t kLightLogMs = 10000;       // Serial log in Auto mode, 0 = off
 
 // ---------------------------------------------------------------------------
 // Touch controller XPT2046 (bit-banged SPI, so the SD card can use VSPI)
@@ -92,6 +115,21 @@ constexpr uint32_t kOtaRebootDelayMs = 2000;          // "Restarting..." stays t
 constexpr uint16_t kOtaChunkBytes = 2048;             // written per loop iteration
 constexpr uint8_t kMaxVersionLen = 15;
 constexpr uint8_t kMaxUrlLen = 159;
+
+// ---------------------------------------------------------------------------
+// Remote message ("Lời nhắn"): docs/message.json, written by tools/message.py
+// ---------------------------------------------------------------------------
+constexpr char kMessageUrl[] =
+    "https://henrydosg.github.io/CYD_Weather_station/message.json";
+constexpr uint32_t kMessageFirstCheckMs = 30000;     // after WiFi connects
+constexpr uint32_t kMessageCheckMs = 30UL * 60000UL;  // then every 30 minutes
+constexpr uint16_t kMaxMessageLen = 240;              // UTF-8 bytes
+constexpr uint8_t kMaxMessageFromLen = 31;
+
+// ---------------------------------------------------------------------------
+// Lunar calendar: the Vietnamese one is computed for UTC+7
+// ---------------------------------------------------------------------------
+constexpr double kLunarTimeZoneHours = 7.0;
 
 // ---------------------------------------------------------------------------
 // Settings (stored in NVS via Preferences)
@@ -168,6 +206,10 @@ constexpr uint8_t kGeoMatchResults = 10;
 constexpr uint8_t kForecastDays = 7;
 constexpr uint8_t kForecastHours = 24;
 constexpr uint8_t kHourlyStep = 3;  // the 24 h graph shows every 3rd hour
+// Rain nowcast: precipitation in 15-minute steps (Open-Meteo minutely_15;
+// outside Europe / North America interpolated from hourly models, so "~").
+constexpr uint8_t kNowcastSlots = 12;      // 3 hours
+constexpr float kRainMinMm = 0.1f;         // per 15 minutes, counts as rain
 constexpr uint8_t kGeoMaxResults = 5;
 constexpr uint8_t kMaxSearchLen = 40;
 constexpr uint32_t kWeatherRefreshMs = 10UL * 60UL * 1000UL;  // all cities in one request

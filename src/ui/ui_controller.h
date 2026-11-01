@@ -11,6 +11,7 @@
 #include "screen_dashboard.h"
 #include "screen_graph.h"
 #include "screen_keyboard.h"
+#include "screen_message.h"
 #include "screen_photos.h"
 #include "screen_search.h"
 #include "screen_settings.h"
@@ -31,7 +32,7 @@ class UiController {
  private:
   enum class Screen : uint8_t {
     Dashboard, Graph, Settings, Calibration, Wifi, Keyboard, Connect, Cities, Search, Photos,
-    Update
+    Update, Message
   };
 
   void showDashboard();
@@ -63,8 +64,10 @@ class UiController {
   ScreenSearch search_;
   ScreenPhotos photos_;
   ScreenUpdate update_;
+  ScreenMessage message_;
   Screen screen_ = Screen::Dashboard;
   Screen afterCalibration_ = Screen::Dashboard;
   uint32_t lastTapAt_ = 0;
+  uint32_t messageShown_ = 0;  // id of the remote message opened last
   bool dashboardPending_ = true;  // full redraw on the next update (needs UiState)
 };

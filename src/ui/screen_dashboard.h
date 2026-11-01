@@ -1,10 +1,14 @@
 // Main screen: one city at a time, rotating through the saved cities.
-// Header (name, region, local time, date, signal, position dots), current
-// weather on the left, "label: value" details on the right, 7-day strip below.
+// Header (name, region, local time, date + lunar date, signal, position dots),
+// current weather on the left with one note line (rain nowcast first, then
+// Tet / full moon / new moon / Tet countdown), "label: value" details on the
+// right, 7-day strip below.
 #pragma once
 
 #include <TFT_eSPI.h>
+#include <time.h>
 
+#include "../calendar/lunar_calendar.h"
 #include "ui_state.h"
 
 enum class DashTarget : uint8_t { Settings, Graph };
@@ -29,6 +33,10 @@ class ScreenDashboard {
   // Shows / hides the ":" of the clock (blinks once a second).
   void drawColon(bool on);
   void drawCurrent(const CityWeather& w);
+  // The note line under "feels like"; `force` redraws even when unchanged.
+  void drawNote(const UiState& s, bool force);
+  // Lunar date and days to Tet of a local date (cached: doubles are slow).
+  void updateLunar(const struct tm& t);
   void drawDetails(const CityWeather& w);
   void drawDays(const CityWeather& w);
   void drawWaiting(const UiState& s);
@@ -45,4 +53,8 @@ class ScreenDashboard {
   bool colonOn_ = true;
   uint8_t lastBars_ = 0;
   WifiState lastWifi_ = WifiState::Idle;
+  char lastNote_[48] = "";
+  int32_t lunarKey_ = -1;  // yyyymmdd of lunar_ / tetDays_
+  LunarDate lunar_{};
+  int tetDays_ = -1;
 };

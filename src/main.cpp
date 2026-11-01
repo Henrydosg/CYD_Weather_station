@@ -7,7 +7,9 @@
 #include <time.h>
 
 #include "config.h"
+#include "hw/backlight.h"
 #include "net/ota_updater.h"
+#include "net/remote_message.h"
 #include "net/time_sync.h"
 #include "net/wifi_manager.h"
 #include "photos/photo_library.h"
@@ -43,6 +45,8 @@ static GeocodingClient geocoder;
 static CityNameResolver cityNames;
 static PhotoLibrary photos;
 static OtaUpdater ota;
+static MessageClient messages;
+static Backlight backlight;
 static uint32_t citiesVersion = 1;
 
 // Network the user asked for; remembered in NVS once the connect succeeds.
@@ -99,6 +103,14 @@ static void apply(const UiCommand& cmd, uint32_t now) {
       settings.rotateSec = cmd.value;
       store.save(settings);
       break;
+    case UiAction::SetBrightness:
+      settings.brightness = static_cast<Brightness>(cmd.value % kBrightnessCount);
+      store.save(settings);
+      break;
+    case UiAction::MessageRead:
+      settings.messageSeen = cmd.id;
+      store.save(settings);
+      break;
     case UiAction::SearchCity:
       geocoder.search(cmd.text, languageCode(settings.language));
       break;
@@ -150,6 +162,7 @@ void setup() {
   weather.setCities(settings.cities);
 
   tft.init();
+  backlight.begin();
   touch.begin();
   touch.setCalibration(settings.touch);
   ui.begin(settings);
@@ -174,6 +187,8 @@ void loop() {
     store.save(settings);
   }
   ota.update(now, wifi.isConnected(), otherRequest);
+  messages.update(now, netFree, otherRequest);
+  backlight.update(now, settings.brightness);
   onConnectAttempt(wifi.attempt());
 
   UiState state{};
@@ -189,6 +204,7 @@ void loop() {
   state.cities = &settings.cities;
   state.citiesVersion = citiesVersion;
   state.rotateSec = settings.rotateSec;
+  state.brightness = settings.brightness;
   state.weather = weather.cities();
   state.fetch = weather.status();
   state.dataVersion = weather.version();
@@ -200,6 +216,11 @@ void loop() {
   state.ota = &ota.status();
   state.timeValid = timeSync.isValid();
   state.utcNow = time(nullptr);
+  const RemoteMessage& message = messages.message();
+  state.message = state.timeValid && messageDue(message, settings.messageSeen,
+                                                static_cast<uint32_t>(state.utcNow))
+                      ? &message
+                      : nullptr;
 
   apply(ui.update(state, touch.poll(now), now), now);
 }

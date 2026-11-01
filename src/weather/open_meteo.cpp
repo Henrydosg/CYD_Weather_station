@@ -13,13 +13,17 @@ constexpr int kUrlSize = 1024;
 constexpr int32_t kSecondsPerDay = 86400;
 constexpr int32_t kSecondsPerMinute = 60;
 constexpr float kSameCityDeg = 0.01f;
+constexpr float kTenthsPerMm = 10.0f;
+constexpr long kMaxTenths = 255;
 
 constexpr char kForecastParams[] =
     "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day,"
-    "wind_speed_10m,wind_direction_10m,surface_pressure,cloud_cover,uv_index"
+    "wind_speed_10m,wind_direction_10m,surface_pressure,cloud_cover,uv_index,precipitation"
     "&hourly=temperature_2m,weather_code,is_day,precipitation_probability"
     "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"
-    "&timezone=auto&timeformat=unixtime&forecast_days=%u&forecast_hours=%u";
+    "&minutely_15=precipitation"
+    "&timezone=auto&timeformat=unixtime&forecast_days=%u&forecast_hours=%u"
+    "&forecast_minutely_15=%u";
 constexpr char kAirQualityParams[] = "&current=us_aqi";
 
 // Broken-down local time of a UTC unix time in a city.
@@ -52,6 +56,7 @@ void parseCity(JsonObjectConst o, CityWeather& w) {
   w.pressureHpa = c["surface_pressure"] | 0.0f;
   w.cloudPct = c["cloud_cover"] | 0;
   w.uvIndex = c["uv_index"] | 0.0f;
+  w.precipitationMm = c["precipitation"] | 0.0f;
 
   JsonObjectConst d = o["daily"];
   JsonArrayConst days = d["time"];
@@ -84,6 +89,15 @@ void parseCity(JsonObjectConst o, CityWeather& w) {
     p.wmoCode = h["weather_code"][i] | 0;
     p.isDay = (h["is_day"][i] | 1) != 0;
     p.precipPct = h["precipitation_probability"][i] | 0;
+  }
+  JsonObjectConst m = o["minutely_15"];
+  JsonArrayConst slots = m["time"];
+  w.nowcastCount = 0;
+  w.nowcastStartUtc = slots.size() > 0 ? slots[0].as<uint32_t>() : 0;
+  for (size_t i = 0; i < slots.size() && w.nowcastCount < config::kNowcastSlots; ++i) {
+    const long tenths = lroundf((m["precipitation"][i] | 0.0f) * kTenthsPerMm);
+    w.nowcastTenthsMm[w.nowcastCount++] =
+        static_cast<uint8_t>(tenths < 0 ? 0 : (tenths > kMaxTenths ? kMaxTenths : tenths));
   }
   w.valid = true;
 }
@@ -135,7 +149,7 @@ bool OpenMeteoClient::fetchForecast() {
   int len = snprintf(url, sizeof(url), "%s", config::kForecastUrl);
   len = appendCoordinates(url, len, sizeof(url));
   len += snprintf(url + len, sizeof(url) - len, kForecastParams, config::kForecastDays,
-                  config::kForecastHours);
+                  config::kForecastHours, config::kNowcastSlots);
   if (len >= static_cast<int>(sizeof(url))) {
     Serial.println("[weather] URL too long");
     return false;
@@ -147,6 +161,7 @@ bool OpenMeteoClient::fetchForecast() {
   one["current"] = true;
   one["daily"] = true;
   one["hourly"] = true;
+  one["minutely_15"] = true;
   JsonDocument filter;
   if (count_ > 1) {
     filter.add(one);

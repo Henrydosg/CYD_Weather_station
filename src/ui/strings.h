@@ -23,8 +23,13 @@ enum class Str : uint8_t {
   HourFmt,          // printf format, one %u (hour)
   // Settings
   Settings,
-  Language,
-  LanguageName,     // name of the current language
+  LanguageVi,       // "VI" on the language toggle
+  LanguageEn,       // "EN"
+  Brightness,
+  BrightnessAuto,   // Brightness::Auto .. Low, in enum order
+  BrightnessHigh,
+  BrightnessMedium,
+  BrightnessLow,
   CalibrateTouch,
   Network,
   NotConnected,
@@ -97,6 +102,21 @@ enum class Str : uint8_t {
   UpdateKeepPower,
   UpdateCheck,
   UpdateInstall,
+  // Lunar calendar and rain nowcast (dashboard)
+  LunarFmt,          // printf: %u day, %u month, %s leap mark
+  LunarLeap,
+  TetCountdownFmt,   // printf: %d days
+  TetToday,
+  FullMoonFmt,       // printf: %u lunar month
+  NewMoonFmt,        // printf: %u lunar month
+  RainSoonFmt,       // printf: %u minutes
+  RainAtFmt,         // printf: %02d hour, %02d minute
+  RainStopsFmt,      // printf: %02d hour, %02d minute
+  RainContinues,
+  // Remote message
+  MessageFromFmt,    // printf: %s sender
+  MessageTitle,
+  MessageDone,
   Count,
 };
 

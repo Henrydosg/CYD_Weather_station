@@ -14,6 +14,8 @@ constexpr char kKeyNetworks[] = "nets";
 constexpr char kKeyCities[] = "cities2";  // City with names in both languages
 constexpr char kKeyCitiesV1[] = "cities";  // older layout, one name per city
 constexpr char kKeyRotate[] = "rot";
+constexpr char kKeyBrightness[] = "bright";
+constexpr char kKeyMessageSeen[] = "msgseen";
 // Gamma / tone picked on the device by an earlier firmware; now fixed in config.h.
 constexpr const char* kObsoleteKeys[] = {"pgam", "ptone"};
 constexpr bool kReadOnly = true;
@@ -49,6 +51,8 @@ Settings defaults() {
   home.latitude = config::kDefaultCityLat;
   home.longitude = config::kDefaultCityLon;
   s.rotateSec = config::kDefaultRotateSec;
+  s.brightness = Brightness::Auto;
+  s.messageSeen = 0;
   return s;
 }
 
@@ -118,6 +122,9 @@ Settings SettingsStore::load() {
   }
   const uint8_t rot = prefs.getUChar(kKeyRotate, config::kDefaultRotateSec);
   s.rotateSec = validRotation(rot) ? rot : config::kDefaultRotateSec;
+  const uint8_t bright = prefs.getUChar(kKeyBrightness, 0);
+  s.brightness = bright < kBrightnessCount ? static_cast<Brightness>(bright) : Brightness::Auto;
+  s.messageSeen = prefs.getULong(kKeyMessageSeen, 0);
   prefs.end();
 
   // Counts only; passwords are never logged.
@@ -143,6 +150,8 @@ void SettingsStore::save(const Settings& s) {
     prefs.remove(kKeyCitiesV1);  // migrated on load
   }
   prefs.putUChar(kKeyRotate, s.rotateSec);
+  prefs.putUChar(kKeyBrightness, static_cast<uint8_t>(s.brightness));
+  prefs.putULong(kKeyMessageSeen, s.messageSeen);
   for (const char* key : kObsoleteKeys) {
     if (prefs.isKey(key)) {
       prefs.remove(key);
