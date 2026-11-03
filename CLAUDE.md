@@ -181,6 +181,10 @@ weather client (`setCities()` keeps data of cities still in the list).
   weather, name lookups, OTA checks and messages wait (an HTTPS request during a scan
   fails and the scan overruns the library's 6 s limit -> "Scan failed"). An empty scan
   result is repeated `kWifiEmptyScanRetries` times; boot clears a driver-stored network.
+  A connect fails only on a disconnect event for the SSID being tried (`WiFi.status()`
+  keeps the previous network's result, and the library retries the very first connect
+  once by itself); `WiFi.begin()` follows `kWifiSettleMs` after the disconnect and
+  allows both WPA3 SAE methods (school WiFi 6 APs). The log names the reason.
 - Clock: the ":" of the dashboard time blinks once a second (redrawn alone in
   `kHighlight` / `kBackground`, no flicker) to show the firmware is running.
 - Photos: Settings -> "Photos" button (header, top right) sends `UiAction::ScanPhotos`;

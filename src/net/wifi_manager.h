@@ -10,7 +10,7 @@
 
 enum class WifiState : uint8_t {
   Idle,          // begin() not called yet
-  Connecting,    // WiFi.begin() issued, waiting for association + IP
+  Connecting,    // settling, then WiFi.begin() issued, waiting for association + IP
   Connected,     // link up, IP assigned
   WaitingRetry,  // every candidate failed, waiting for backoff to expire
 };
@@ -72,6 +72,8 @@ class WifiManager {
   uint8_t candidateCount() const;
   void selectCandidate(uint8_t index);
   void startConnect(uint32_t now);
+  bool issueBegin();
+  void onDisconnected(const uint8_t* ssid, uint8_t ssidLen, uint8_t reason);
   void connectFailed(uint32_t now);
   void scheduleRetry(uint32_t now);
   void pollScan(uint32_t now);
@@ -89,6 +91,13 @@ class WifiManager {
 
   WifiState state_ = WifiState::Idle;
   uint32_t stateSince_ = 0;
+  bool beginPending_ = false;  // Connecting: waiting kWifiSettleMs before begin()
+  uint32_t beganAt_ = 0;
+
+  // Written by the WiFi event task: disconnects of the network being tried.
+  volatile uint32_t failEvents_ = 0;
+  volatile uint8_t failReason_ = 0;
+  uint32_t failEventsAtBegin_ = 0;
   uint32_t retryDelayMs_;
   int8_t rssi_ = 0;
   char ip_[16] = "";

@@ -145,9 +145,12 @@ constexpr uint32_t kWifiConnectTimeoutMs = 15000;
 constexpr uint32_t kWifiRetryInitialMs = 5000;
 constexpr uint32_t kWifiRetryMaxMs = 60000;
 constexpr uint32_t kRssiSampleMs = 5000;  // signal strength refresh for the UI
-// A status of "auth failed" / "no AP" right after WiFi.begin() may be stale
-// from the previous attempt; it only counts after this grace period.
+// A disconnect event right after WiFi.begin() may still belong to the previous
+// attempt; a failure only counts after this grace period.
 constexpr uint32_t kWifiFailGraceMs = 1000;
+// Pause between dropping the old network and WiFi.begin(): the disconnect is
+// asynchronous, and a begin() while the driver still connects is refused.
+constexpr uint32_t kWifiSettleMs = 200;
 constexpr uint32_t kWifiScanTimeoutMs = 10000;  // async scan normally takes 2-4 s
 constexpr uint8_t kMaxScanResults = 12;         // strongest networks kept from a scan
 constexpr uint8_t kWifiEmptyScanRetries = 2;    // a scan that finds nothing is repeated

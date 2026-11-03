@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
+#include <string.h>
 
 const char* wifiStateName(WifiState state) {
   switch (state) {
@@ -31,6 +33,14 @@ void WifiManager::begin(uint32_t now) {
   WiFi.setSleep(false);
   // Reconnects are driven by this class so the backoff stays predictable.
   WiFi.setAutoReconnect(false);
+  // WiFi.status() keeps the result of the previous network until a new event
+  // arrives, so failures are taken from disconnect events of the current SSID.
+  WiFi.onEvent(
+      [this](arduino_event_id_t, arduino_event_info_t info) {
+        const wifi_event_sta_disconnected_t& d = info.wifi_sta_disconnected;
+        onDisconnected(d.ssid, d.ssid_len, d.reason);
+      },
+      ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   if (candidateCount() == 0) {
     Serial.println("[wifi] no network yet: choose one in Settings -> WiFi");
     return;  // Idle until connectTo()
@@ -90,8 +100,20 @@ void WifiManager::update(uint32_t now) {
       break;
 
     case WifiState::Connecting: {
-      const bool rejected = (status == WL_CONNECT_FAILED || status == WL_NO_SSID_AVAIL) &&
-                            elapsed >= config::kWifiFailGraceMs;
+      if (beginPending_) {
+        // A refused begin() (driver still busy) is tried again after another pause.
+        if (now - beganAt_ >= config::kWifiSettleMs) {
+          beganAt_ = now;
+          beginPending_ = !issueBegin();
+        }
+        if (elapsed >= config::kWifiConnectTimeoutMs) {
+          Serial.printf("[wifi] \"%s\": timeout\n", ssid_);
+          connectFailed(now);
+        }
+        break;
+      }
+      const bool rejected = failEvents_ != failEventsAtBegin_ &&
+                            now - beganAt_ >= config::kWifiFailGraceMs;
       if (linkUp) {
         state_ = WifiState::Connected;
         stateSince_ = now;
@@ -103,8 +125,13 @@ void WifiManager::update(uint32_t now) {
         strlcpy(ip_, WiFi.localIP().toString().c_str(), sizeof(ip_));
         Serial.printf("[wifi] connected to \"%s\", IP %s, RSSI %d dBm\n", ssid_, ip_,
                       WiFi.RSSI());
-      } else if (rejected || elapsed >= config::kWifiConnectTimeoutMs) {
-        Serial.printf("[wifi] \"%s\": %s\n", ssid_, rejected ? "rejected" : "timeout");
+      } else if (rejected) {
+        const uint8_t reason = failReason_;
+        Serial.printf("[wifi] \"%s\": rejected (reason %u %s)\n", ssid_, reason,
+                      WiFi.disconnectReasonName(static_cast<wifi_err_reason_t>(reason)));
+        connectFailed(now);
+      } else if (elapsed >= config::kWifiConnectTimeoutMs) {
+        Serial.printf("[wifi] \"%s\": timeout\n", ssid_);
         connectFailed(now);
       }
       break;
@@ -133,12 +160,46 @@ void WifiManager::update(uint32_t now) {
   }
 }
 
+// Drops the old network now; WiFi.begin() follows after kWifiSettleMs (update()).
 void WifiManager::startConnect(uint32_t now) {
   Serial.printf("[wifi] connecting to \"%s\"\n", ssid_);
   WiFi.disconnect();
-  WiFi.begin(ssid_, password_);
   state_ = WifiState::Connecting;
   stateSince_ = now;
+  beganAt_ = now;
+  beginPending_ = true;
+}
+
+// Returns false when the driver refused the connect (e.g. still busy).
+bool WifiManager::issueBegin() {
+  failEventsAtBegin_ = failEvents_;
+  WiFi.begin(ssid_, password_, 0, nullptr, false /*connect*/);
+  // WPA3: accept both SAE methods. Newer (WiFi 6) access points may only allow
+  // hash-to-element; the driver default is hunting-and-pecking only.
+  wifi_config_t conf;
+  if (esp_wifi_get_config(WIFI_IF_STA, &conf) == ESP_OK) {
+    conf.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
+    esp_wifi_set_config(WIFI_IF_STA, &conf);
+  }
+  const esp_err_t err = esp_wifi_connect();
+  if (err != ESP_OK) {
+    Serial.printf("[wifi] connect refused (%s), retrying\n", esp_err_to_name(err));
+    return false;
+  }
+  return true;
+}
+
+// WiFi event task. Leaving on purpose (WiFi.disconnect()) is not a failure,
+// and events of another network belong to an earlier attempt.
+void WifiManager::onDisconnected(const uint8_t* ssid, uint8_t ssidLen, uint8_t reason) {
+  if (reason == WIFI_REASON_ASSOC_LEAVE) {
+    return;
+  }
+  if (ssidLen != strlen(ssid_) || memcmp(ssid, ssid_, ssidLen) != 0) {
+    return;
+  }
+  failReason_ = reason;
+  failEvents_ = failEvents_ + 1;
 }
 
 void WifiManager::connectFailed(uint32_t now) {
