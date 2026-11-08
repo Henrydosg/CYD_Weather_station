@@ -11,7 +11,7 @@ namespace config {
 // Firmware version (semantic, "major.minor.patch"). Raise it for every release:
 // tools/release.py reads it and devices update when the published one is newer.
 // ---------------------------------------------------------------------------
-constexpr char kFirmwareVersion[] = "1.1.4";
+constexpr char kFirmwareVersion[] = "1.1.5";
 
 // ---------------------------------------------------------------------------
 // Display
@@ -115,6 +115,12 @@ constexpr uint32_t kOtaRebootDelayMs = 2000;          // "Restarting..." stays t
 constexpr uint16_t kOtaChunkBytes = 2048;             // written per loop iteration
 constexpr uint8_t kMaxVersionLen = 15;
 constexpr uint8_t kMaxUrlLen = 159;
+// A new firmware must reach WiFi + one weather fetch within this time after
+// booting, otherwise the device goes back to the previous one (sys/boot_health).
+constexpr uint32_t kOtaVerifyWindowMs = 600000;  // 10 min
+// loop() must come round within this time, otherwise the device restarts.
+// Longest legitimate blocking: one HTTPS request (kHttpTimeoutMs + TLS).
+constexpr uint32_t kLoopWatchdogSec = 30;
 
 // ---------------------------------------------------------------------------
 // Remote message ("Lời nhắn"): docs/message.json, written by tools/message.py
@@ -135,6 +141,7 @@ constexpr double kLunarTimeZoneHours = 7.0;
 // Settings (stored in NVS via Preferences)
 // ---------------------------------------------------------------------------
 constexpr char kSettingsNamespace[] = "cyd-weather";
+constexpr char kBootNamespace[] = "cyd-boot";  // boot / crash counters, rollback
 constexpr uint8_t kDefaultLanguage = 0;  // 0 = Vietnamese, 1 = English
 
 // ---------------------------------------------------------------------------

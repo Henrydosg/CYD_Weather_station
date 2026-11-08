@@ -6,7 +6,7 @@ quantises to RGB565 like the panel. Sample data only; panel gamma and viewing
 angle are not simulated. Keep it in sync when a screen's layout changes.
 
 Usage (from the project root, needs Pillow):
-    python tools/preview_screen.py --out preview.png [--scale 2] [--screen main|setup|wifi]
+    python tools/preview_screen.py --out preview.png [--scale 2] [--screen main|setup|wifi|info]
       main:  dashboard (Tet countdown, rain soon, raining, full moon) and the 24 h graph
       setup: settings, city manager, action panel, search keyboard, search results,
              photo viewer hint and message, firmware update (available, downloading),
@@ -302,6 +302,47 @@ def update_screen(downloading=False):
     return img
 
 
+def update_screen_info(rolled_back=False):
+    """screen_update.cpp with the "Thông tin" header button (and a rollback notice)"""
+    img, d = new_screen()
+    back_header(img, "Firmware")
+    pill(img, 212, 4, 100, 28, "Thông tin", C["Accent"], C["Accent"], True)
+    d.text((160, 70), "Phiên bản v1.1.5", font=F["medium"], fill=C["Ink"], anchor="mm")
+    if rolled_back:
+        d.text((160, 102), "Bản v1.2.1 bị lỗi, đã quay lại", font=F["small"], fill=C["Warn"],
+               anchor="mm")
+        d.text((160, 152), "Máy tự quay lại bản trước để vẫn chạy được", font=F["tiny"],
+               fill=C["Muted"], anchor="mm")
+        pill(img, 70, 182, 180, 40, "Kiểm tra", C["Accent"], C["OnAccent"], False)
+    else:
+        d.text((160, 102), "Đã là bản mới nhất", font=F["small"], fill=C["Ok"], anchor="mm")
+        pill(img, 70, 182, 180, 40, "Kiểm tra", C["Accent"], C["OnAccent"], False)
+    return img
+
+
+def info_screen(verifying=False):
+    """screen_info.cpp: device information (opened from the Firmware screen)"""
+    img, d = new_screen()
+    back_header(img, "Thông tin máy")
+    version = ("v1.1.5  đang kiểm tra (8 phút)", C["Highlight"]) if verifying else (
+        "v1.1.5  đã xác nhận", C["Ok"])
+    rows = [("Phiên bản", *version), ("Đang chạy", "2 ngày 05:14", C["Ink"]),
+            ("Khởi động", "37 lần, lỗi 1 lần", C["Ink"]),
+            ("Lần cuối do", "Rút điện / bật lại", C["Ink"]),
+            ("WiFi", "MIX   -58 dBm", C["Ok"]), ("IP", "172.19.97.143", C["Ink"]),
+            ("MAC", "24:6F:28:AB:CD:EF", C["Ink"]), ("RAM trống", "142 KB (thấp nhất 96 KB)", C["Ink"]),
+            ("Thời tiết", "cập nhật 3 phút trước", C["Ink"])]
+    card(img, 6, 38, 308, 196)
+    d = ImageDraw.Draw(img)
+    for i, (lab, val, col) in enumerate(rows):
+        mid = 50 + i * 21
+        d.text((16, mid), lab, font=F["label"], fill=C["Label"], anchor="lm")
+        d.text((304, mid), val, font=F["label"], fill=col, anchor="rm")
+        if i < len(rows) - 1:
+            d.line((16, mid + 10, 304, mid + 10), fill=C["Track"])
+    return img
+
+
 def wrap(d, text, fnt, max_w):
     lines, cur = [], ""
     for word in text.split():
@@ -529,6 +570,8 @@ SCREENS = {
     "wifi": lambda: [wifi_list(), keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối"),
                      keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối", "symbols"),
                      connect_failed()],
+    "info": lambda: [update_screen_info(), update_screen_info(rolled_back=True), info_screen(),
+                     info_screen(verifying=True)],
 }
 
 

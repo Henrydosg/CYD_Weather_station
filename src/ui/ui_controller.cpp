@@ -32,6 +32,7 @@ UiController::UiController(TFT_eSPI& tft)
       search_(tft),
       photos_(tft),
       update_(tft),
+      info_(tft),
       message_(tft) {}
 
 void UiController::begin(const Settings& settings) {
@@ -127,6 +128,14 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
       return UiCommand{};
     case Screen::Update:
       return updateUpdate(state, touch);
+    case Screen::Info:
+      if (touch.tapped && info_.hitBack(touch.x, touch.y)) {
+        screen_ = Screen::Update;
+        update_.show(state);
+      } else {
+        info_.update(state);
+      }
+      return UiCommand{};
     case Screen::Message: {
       UiCommand cmd;
       if (touch.tapped && message_.hitDone(touch.x, touch.y)) {
@@ -418,6 +427,10 @@ UiCommand UiController::updateUpdate(const UiState& state, const TouchEvent& tou
       cmd.action = state.ota != nullptr && state.ota->state == OtaState::Available
                        ? UiAction::InstallUpdate
                        : UiAction::CheckUpdate;
+      break;
+    case UpdateTarget::Info:
+      screen_ = Screen::Info;
+      info_.show(state);
       break;
     case UpdateTarget::None:
       break;

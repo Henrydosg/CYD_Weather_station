@@ -98,7 +98,11 @@ src/
   calendar/lunar_calendar  Vietnamese lunar date (new moons / solar terms, UTC+7) and days
                            to Tet; double precision, so the dashboard caches it per date
   hw/backlight             LEDC PWM backlight: Auto (LDR, smoothed, fades) or fixed levels
-  weather/open_meteo_root_ca.h  ISRG Root X1 + X2 (Let's Encrypt) for *.open-meteo.com
+  sys/boot_health          reset reason, boot / crash counters (NVS "cyd-boot"), OTA rollback
+                           guard (BootReport, plain data for the UI)
+  weather/open_meteo_root_ca.h  ISRG Root X1 + X2 + Gen Y Root YR + YE (Let's Encrypt) for
+                                *.open-meteo.com and *.github.io; mbedtls rejects the YR chain via
+                                X1, so YR / YE must be trusted directly
   settings/settings.h      Settings / Language / TouchCalibration / SavedNetworks /
                            SavedCities (plain data)
   settings/saved_networks  remember (most recent first, max 5) / forget / find a network
@@ -111,7 +115,10 @@ src/
   ui/screen_settings   rows: cities, rotation, brightness, calibration, WiFi, firmware;
                        header: "VI | EN" language toggle, "Photos" button
   ui/screen_message    remote message full screen (envelope, wrapped text, OK)
-  ui/screen_update     installed version, OTA state, Check / Update button, progress bar
+  ui/screen_update     installed version, OTA state / rolled back version, Check / Update
+                       button, progress bar, "Info" header button
+  ui/screen_info       device info: version (confirmed / verifying), uptime, boots, last reset,
+                       WiFi, IP, MAC, free RAM, weather data age (UiState::system)
   ui/screen_cities     saved cities, "+ Add", Up / Down / Remove panel
   ui/screen_search     geocoding results with "+" to add
   ui/screen_wifi       scanned networks, 4 per page, signal/lock/saved/connected marks
@@ -199,7 +206,11 @@ weather client (`setCities()` keeps data of cities still in the list).
   (`RELEASE_BUILD`) compiles without `secrets.h` (release.py verifies the SSID/password are
   not in the binary) because docs/ is public; such a device starts with no WiFi and joins
   the network picked on its WiFi screen. While downloading, weather / search / name lookups
-  pause. There is no automatic rollback: a broken release needs the web installer (cable).
+  pause. Rollback (`sys/boot_health`, since v1.1.5): `verifyRollbackLater()` returns true,
+  so a firmware installed over WiFi boots "pending verify" and must get WiFi + one weather
+  fetch within `kOtaVerifyWindowMs` (10 min), else it rolls back to the previous slot; a
+  reset before that (crash, watchdog, power cut) also rolls back (bootloader). The failed
+  version is kept in NVS and shown on the Firmware screen.
   The OTA download uses the ISRG roots of `open_meteo_root_ca.h` (*.github.io is Let's
   Encrypt) through `weather/https_json`.
 - Remote message: `python tools/message.py "text" --from X [--show-from/--show-until
@@ -236,7 +247,7 @@ weather client (`setCities()` keeps data of cities still in the list).
 - Icons (`gen_icons.py`): 72 px for the current weather and 30 px "...Small" for the
   7-day strip and the graph; pastel colours that read well on black.
 - UI preview on PC: `python tools/preview_screen.py --out <png> [--scale 2]
-  [--screen main|setup|wifi]` with sample data and the colours read from `theme.h`.
+  [--screen main|setup|wifi|info]` with sample data and the colours read from `theme.h`.
   Keep it in sync with the screens when their layout changes.
 - Partition table is `min_spiffs.csv`: two 1.875 MB OTA app slots (firmware ~1.48 MB,
   watch the headroom when adding assets). NVS is at 0x9000 as before, so settings survived
@@ -252,6 +263,8 @@ weather client (`setCities()` keeps data of cities still in the list).
 - **Non-blocking:** schedule with `millis()` and the rollover-safe form
   `now - since >= interval`. No `delay()` beyond a few ms, no `while` loops waiting on
   WiFi/HTTP. Every module exposes `update(now)` and is called every loop.
+- Watchdog: `loop()` is on the task watchdog (`kLoopWatchdogSec`, 30 s, panic + restart).
+  Anything blocking must stay well below that.
 - The one bounded exception: `HTTPClient::GET()` is synchronous and limited by
   `config::kHttpTimeoutMs`. `OpenMeteoClient` sets `FetchStatus::Fetching` one loop before
   the request (forecast and air quality run in separate loop iterations);

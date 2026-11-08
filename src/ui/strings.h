@@ -90,7 +90,6 @@ enum class Str : uint8_t {
   PhotoError,
   // Firmware update
   Firmware,
-  UpdateTitle,
   UpdateVersionFmt,      // printf format, one %s (installed version)
   UpdateTapCheck,
   UpdateChecking,
@@ -118,6 +117,34 @@ enum class Str : uint8_t {
   MessageFromFmt,    // printf: %s sender
   MessageTitle,
   MessageDone,
+  // Rollback notice (Firmware screen) and device info screen
+  UpdateRolledBackFmt,  // printf: %s failed version
+  UpdateRolledBackNote,
+  InfoButton,
+  InfoTitle,
+  InfoVersion,
+  InfoConfirmedFmt,   // printf: %s version
+  InfoVerifyingFmt,   // printf: %s version, %u minutes left
+  InfoUptime,
+  InfoUptimeDaysFmt,  // printf: %lu days, %02u hours, %02u minutes
+  InfoBoots,
+  InfoBootsFmt,       // printf: %lu boots, %lu crashes
+  InfoLastReset,
+  ResetPowerOn,       // ResetKind order
+  ResetRestart,
+  ResetCrash,
+  ResetWatchdog,
+  ResetBrownout,
+  ResetOther,
+  InfoWifi,
+  InfoIp,
+  InfoMac,
+  InfoRam,
+  InfoRamFmt,         // printf: %lu KB free, %lu KB lowest
+  InfoWeather,
+  InfoWeatherAgoFmt,  // printf: %lu minutes
+  InfoWeatherNow,
+  InfoWeatherNone,
   Count,
 };
 

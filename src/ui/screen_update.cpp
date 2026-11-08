@@ -12,7 +12,11 @@ namespace {
 
 constexpr int16_t kW = config::kScreenWidth;
 constexpr int16_t kH = config::kScreenHeight;
-constexpr int16_t kTitleMaxW = 280;
+constexpr int16_t kTitleMaxW = 180;
+// "Info" button in the header (top right)
+constexpr int16_t kInfoW = 100, kInfoH = 28;
+constexpr int16_t kInfoX = kW - 8 - kInfoW, kInfoY = 4;
+constexpr int16_t kInfoHitX = kInfoX - 10;
 constexpr int16_t kBodyY = 44;
 constexpr int16_t kVersionMidY = 70;
 constexpr int16_t kStatusMidY = 102;
@@ -30,7 +34,9 @@ bool online(const UiState& s) { return s.wifi == WifiState::Connected; }
 
 void ScreenUpdate::show(const UiState& s) {
   tft_.fillScreen(kBackground);
-  ui::drawBackHeader(tft_, tr(Str::UpdateTitle), kTitleMaxW);
+  ui::drawBackHeader(tft_, tr(Str::Firmware), kTitleMaxW);
+  useFont(tft_, kFontSmall);
+  ui::drawPill(tft_, kInfoX, kInfoY, kInfoW, kInfoH, tr(Str::InfoButton), kAccent, kAccent, true);
   drawBody(s);
 }
 
@@ -66,6 +72,9 @@ UpdateTarget ScreenUpdate::hitTest(int16_t x, int16_t y, const UiState& s) const
   if (ui::hit(x, y, 0, 0, ui::kBackHitW, ui::kBackHitH)) {
     return UpdateTarget::Back;
   }
+  if (ui::hit(x, y, kInfoHitX, 0, kW - kInfoHitX, ui::kBackHitH)) {
+    return UpdateTarget::Info;
+  }
   if (hasButton(s) && ui::hit(x, y, kButtonX, kButtonY, kButtonW, kButtonH)) {
     return UpdateTarget::Action;
   }
@@ -88,7 +97,14 @@ void ScreenUpdate::drawBody(const UiState& s) {
 
   uint16_t color = kMuted;
   const char* note = nullptr;
-  if (!online(s) && ota.state != OtaState::Downloading && ota.state != OtaState::Restarting) {
+  const BootReport* boot = s.system.boot;
+  const bool rolledBack = boot != nullptr && boot->failedVersion[0] != '\0' &&
+                          (ota.state == OtaState::Idle || ota.state == OtaState::UpToDate);
+  if (rolledBack && online(s)) {
+    snprintf(buf, sizeof(buf), tr(Str::UpdateRolledBackFmt), boot->failedVersion);
+    color = kWarn;
+    note = tr(Str::UpdateRolledBackNote);
+  } else if (!online(s) && ota.state != OtaState::Downloading && ota.state != OtaState::Restarting) {
     strlcpy(buf, tr(Str::UpdateNoWifi), sizeof(buf));
     color = kError;
   } else {

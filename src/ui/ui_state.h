@@ -10,7 +10,18 @@
 #include "../net/wifi_manager.h"
 #include "../photos/photo_library.h"
 #include "../settings/settings.h"
+#include "../sys/boot_health.h"
 #include "../weather/weather_data.h"
+
+// Device information for the Info screen (Settings -> Firmware -> Info).
+struct SystemInfo {
+  const BootReport* boot;
+  uint32_t uptimeSec;
+  uint32_t freeHeap;      // bytes
+  uint32_t minFreeHeap;   // lowest since boot, bytes
+  const char* mac;        // "24:6F:28:AB:CD:EF"
+  int32_t weatherAgeSec;  // since the last successful forecast, -1 = none yet
+};
 
 struct UiState {
   // WiFi
@@ -41,6 +52,7 @@ struct UiState {
   const PhotoList* photos;
   // Firmware update
   const OtaStatus* ota;
+  SystemInfo system;
   // Remote message, nullptr when there is none to show (new and in its dates)
   const RemoteMessage* message;
   // Clock

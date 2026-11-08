@@ -3,6 +3,8 @@
 // src/settings and src/ui.
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include <WiFi.h>
+#include <esp_task_wdt.h>
 #include <string.h>
 #include <time.h>
 
@@ -14,6 +16,7 @@
 #include "net/wifi_manager.h"
 #include "photos/photo_library.h"
 #include "settings/settings_store.h"
+#include "sys/boot_health.h"
 #include "ui/touch_input.h"
 #include "ui/ui_controller.h"
 #include "weather/city_names.h"
@@ -47,6 +50,8 @@ static PhotoLibrary photos;
 static OtaUpdater ota;
 static MessageClient messages;
 static Backlight backlight;
+static BootHealth boot;
+static char macText[18] = "";  // station MAC, for the Info screen
 static uint32_t citiesVersion = 1;
 
 // Network the user asked for; remembered in NVS once the connect succeeds.
@@ -157,6 +162,10 @@ static void apply(const UiCommand& cmd, uint32_t now) {
 void setup() {
   Serial.begin(115200);
   Serial.printf("\n[main] CYD weather station v%s starting\n", config::kFirmwareVersion);
+  boot.begin();
+  // Restart if loop() hangs (the core's watchdog only watches the idle task).
+  esp_task_wdt_init(config::kLoopWatchdogSec, true);
+  esp_task_wdt_add(nullptr);
 
   settings = store.load();
   weather.setCities(settings.cities);
@@ -168,9 +177,11 @@ void setup() {
   ui.begin(settings);
   wifi.setSavedNetworks(&settings.networks);
   wifi.begin(millis());
+  strlcpy(macText, WiFi.macAddress().c_str(), sizeof(macText));
 }
 
 void loop() {
+  esp_task_wdt_reset();
   const uint32_t now = millis();
 
   wifi.update(now);
@@ -192,6 +203,7 @@ void loop() {
   messages.update(now, netFree, otherRequest || scanning);
   backlight.update(now, settings.brightness);
   onConnectAttempt(wifi.attempt());
+  boot.update(now, wifi.isConnected() && weather.version() > 0);
 
   UiState state{};
   state.wifi = wifi.state();
@@ -217,6 +229,13 @@ void loop() {
   state.searchCount = geocoder.count();
   state.photos = &photos.list();
   state.ota = &ota.status();
+  state.system.boot = &boot.report();
+  state.system.uptimeSec = now / 1000;
+  state.system.freeHeap = ESP.getFreeHeap();
+  state.system.minFreeHeap = ESP.getMinFreeHeap();
+  state.system.mac = macText;
+  state.system.weatherAgeSec =
+      weather.version() > 0 ? static_cast<int32_t>((now - weather.lastSuccessMs()) / 1000) : -1;
   state.timeValid = timeSync.isValid();
   state.utcNow = time(nullptr);
   const RemoteMessage& message = messages.message();

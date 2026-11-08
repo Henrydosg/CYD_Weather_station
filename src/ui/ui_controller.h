@@ -10,6 +10,7 @@
 #include "screen_connect.h"
 #include "screen_dashboard.h"
 #include "screen_graph.h"
+#include "screen_info.h"
 #include "screen_keyboard.h"
 #include "screen_message.h"
 #include "screen_photos.h"
@@ -32,7 +33,7 @@ class UiController {
  private:
   enum class Screen : uint8_t {
     Dashboard, Graph, Settings, Calibration, Wifi, Keyboard, Connect, Cities, Search, Photos,
-    Update, Message
+    Update, Info, Message
   };
 
   void showDashboard();
@@ -64,6 +65,7 @@ class UiController {
   ScreenSearch search_;
   ScreenPhotos photos_;
   ScreenUpdate update_;
+  ScreenInfo info_;
   ScreenMessage message_;
   Screen screen_ = Screen::Dashboard;
   Screen afterCalibration_ = Screen::Dashboard;

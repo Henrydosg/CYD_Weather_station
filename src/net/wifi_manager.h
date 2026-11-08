@@ -107,6 +107,7 @@ class WifiManager {
   ScanState scanState_ = ScanState::Idle;
   bool scanRequested_ = false;
   uint32_t scanStarted_ = 0;
+  uint32_t scanRequestedAt_ = 0;  // millis() of the last startScan()
   uint8_t emptyScans_ = 0;  // consecutive empty results of the current scan request
   uint32_t scanVersion_ = 0;
   WifiScanResults scan_;
