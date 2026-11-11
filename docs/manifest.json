@@ -1,6 +1,6 @@
 {
-  "name": "CYD Weather Station",
-  "version": "1.1.5",
+  "name": "CYD Weather Station 2.8\"",
+  "version": "1.2.0",
   "new_install_prompt_erase": false,
   "builds": [
     {
@@ -19,7 +19,7 @@
           "offset": 57344
         },
         {
-          "path": "firmware/cyd-weather-1.1.5.bin",
+          "path": "firmware/cyd-weather-1.2.0.bin",
           "offset": 65536
         }
       ]
