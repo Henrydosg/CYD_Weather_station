@@ -265,7 +265,7 @@ watchdog.
   (`RELEASE_BUILD`) compiles without `secrets.h` (release.py verifies the SSID/password are
   not in the binary) because docs/ is public; such a device starts with no WiFi and joins
   the network picked on its WiFi screen. While downloading, weather / search / name lookups
-  pause. Rollback (`sys/boot_health`, since v1.2.0): `verifyRollbackLater()` returns true,
+  pause. Rollback (`sys/boot_health`, since v1.1.5): `verifyRollbackLater()` returns true,
   so a firmware installed over WiFi boots "pending verify" and must get WiFi + one weather
   fetch within `kOtaVerifyWindowMs` (10 min), else it rolls back to the previous slot; a
   reset before that (crash, watchdog, power cut) also rolls back (bootloader). The failed
