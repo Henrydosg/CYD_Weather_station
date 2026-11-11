@@ -49,6 +49,9 @@ class WifiManager {
   void connectTo(const char* ssid, const char* password, uint32_t now);
   // Starts an asynchronous scan (deferred while a connect is in progress).
   void startScan();
+  // A requested scan starts only while allowed (no HTTPS request in flight on
+  // the network task: a scan during a request breaks both).
+  void setScanAllowed(bool allowed) { scanAllowed_ = allowed; }
 
   WifiState state() const { return state_; }
   bool isConnected() const { return state_ == WifiState::Connected; }
@@ -107,6 +110,8 @@ class WifiManager {
   ScanState scanState_ = ScanState::Idle;
   bool scanRequested_ = false;
   uint32_t scanStarted_ = 0;
+  bool scanAllowed_ = true;
+  uint32_t scanRequestedAt_ = 0;  // millis() of the last startScan()
   uint8_t emptyScans_ = 0;  // consecutive empty results of the current scan request
   uint32_t scanVersion_ = 0;
   WifiScanResults scan_;

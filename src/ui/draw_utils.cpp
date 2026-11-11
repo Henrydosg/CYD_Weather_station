@@ -1,22 +1,26 @@
 #include "draw_utils.h"
 
 #include "assets/fonts.h"
+#include "layout.h"
 
 namespace ui {
 
 namespace {
 const uint8_t* gLoadedFont = nullptr;
-constexpr int16_t kBorder = 1;
+constexpr int16_t kBorder = ui::lay::S(1);
 constexpr int kBarCount = 4;
-constexpr int16_t kBarW = 3, kBarGap = 2, kBarMinH = 4, kBarStepH = 3;
+constexpr int16_t kBarW = ui::lay::X(3);
+constexpr int16_t kBarGap = ui::lay::X(2);
+constexpr int16_t kBarMinH = ui::lay::Y(4);
+constexpr int16_t kBarStepH = ui::lay::Y(3);
 constexpr int8_t kRssiLevels[kBarCount] = {-85, -75, -65, -55};  // dBm for 1..4 bars
-constexpr float kChevronHalf = 5.0f;   // half height
-constexpr float kChevronDepth = 4.0f;  // horizontal depth
-constexpr float kChevronStroke = 1.1f;
+constexpr float kChevronHalf = ui::lay::Sf(5.0f);   // half height
+constexpr float kChevronDepth = ui::lay::Sf(4.0f);  // horizontal depth
+constexpr float kChevronStroke = ui::lay::Sf(1.1f);
 constexpr size_t kFitBufLen = 72;  // longest fitted text (city / network names)
 constexpr size_t kWrapLineLen = 160;  // bytes of one wrapped line
-constexpr int16_t kBackChevronX = 14;
-constexpr int16_t kTitleX = 26;
+constexpr int16_t kBackChevronX = ui::lay::X(14);
+constexpr int16_t kTitleX = ui::lay::X(26);
 
 // Remove the last UTF-8 character from `s` (in place).
 void popUtf8Char(char* s) {

@@ -5,6 +5,7 @@
 #include "assets/fonts.h"
 #include "config.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -13,13 +14,13 @@ using ui::useFont;
 namespace {
 
 constexpr int16_t kW = config::kScreenWidth;
-constexpr int16_t kTitleMaxW = 280;
-constexpr int16_t kListY = 42, kRowPitch = 39, kRowH = 35;
-constexpr int16_t kCardX = 6, kCardW = kW - 12;
-constexpr int16_t kTextX = 16, kTextMaxW = 160;
-constexpr int16_t kPopRightX = 262, kPopMaxW = 90;
-constexpr int16_t kAddX = 272, kAddW = 32, kAddH = 24;
-constexpr int16_t kAddHitX = 250;
+constexpr int16_t kTitleMaxW = ui::lay::X(280);
+constexpr int16_t kListY = ui::lay::Y(42), kRowPitch = ui::lay::Y(39), kRowH = ui::lay::Y(35);
+constexpr int16_t kCardX = ui::lay::X(6), kCardW = kW - 12;
+constexpr int16_t kTextX = ui::lay::X(16), kTextMaxW = ui::lay::X(160);
+constexpr int16_t kPopRightX = ui::lay::X(262), kPopMaxW = ui::lay::X(90);
+constexpr int16_t kAddX = ui::lay::X(272), kAddW = ui::lay::X(32), kAddH = ui::lay::Y(24);
+constexpr int16_t kAddHitX = ui::lay::X(250);
 constexpr float kSameCityDeg = 0.01f;
 constexpr float kMillion = 1e6f, kThousand = 1e3f;
 

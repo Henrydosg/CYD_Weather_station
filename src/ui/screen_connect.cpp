@@ -2,6 +2,7 @@
 
 #include "assets/fonts.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -10,16 +11,22 @@ using ui::useFont;
 namespace {
 
 constexpr int16_t kW = config::kScreenWidth;
-constexpr int16_t kTitleMaxW = 280;
+constexpr int16_t kTitleMaxW = ui::lay::X(280);
 
-constexpr int16_t kCardX = 30, kCardY = 70, kCardW = kW - 60, kCardH = 110;
+constexpr int16_t kCardX = ui::lay::X(30);
+constexpr int16_t kCardY = ui::lay::Y(70);
+constexpr int16_t kCardW = kW - 60;
+constexpr int16_t kCardH = ui::lay::Y(110);
 constexpr int16_t kLine1Y = kCardY + 28, kLine2Y = kCardY + 50;
 constexpr int16_t kMessageY = kCardY + kCardH / 2;
 
-constexpr int16_t kBtnY = kCardY + 70, kBtnH = 28, kBtnW = 104, kBtnGap = 12;
+constexpr int16_t kBtnY = kCardY + 70;
+constexpr int16_t kBtnH = ui::lay::Y(28);
+constexpr int16_t kBtnW = ui::lay::X(104);
+constexpr int16_t kBtnGap = ui::lay::X(12);
 constexpr int16_t kBtnPairX = kW / 2 - kBtnW - kBtnGap / 2;  // left of two buttons
 constexpr int16_t kBtnSingleX = kW / 2 - kBtnW / 2;
-constexpr int16_t kBtnHitPad = 6;
+constexpr int16_t kBtnHitPad = ui::lay::S(6);
 
 }  // namespace
 

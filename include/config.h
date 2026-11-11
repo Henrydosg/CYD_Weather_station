@@ -1,9 +1,13 @@
-// Project-wide configuration for the CYD (ESP32-2432S028) weather station.
-// Every tunable constant lives here. TFT pins are set in platformio.ini
-// build_flags (TFT_eSPI requires them at compile time).
+// Project-wide configuration for the CYD weather station + TIME FALLS clock.
+// Every tunable constant lives here; what differs between the supported boards
+// (2.8" ESP32-2432S028R, 3.5" ESP32-3248S035R) comes from include/boards/ via
+// board.h. TFT pins are set in platformio.ini build_flags (TFT_eSPI requires
+// them at compile time).
 #pragma once
 
 #include <stdint.h>
+
+#include "board.h"
 
 namespace config {
 
@@ -16,11 +20,11 @@ constexpr char kFirmwareVersion[] = "1.1.4";
 // ---------------------------------------------------------------------------
 // Display
 // ---------------------------------------------------------------------------
-constexpr uint8_t kScreenRotation = 1;  // landscape, 320 x 240
+constexpr uint8_t kScreenRotation = 1;  // landscape
 // Some CYD panel variants (e.g. "TPM408-2.8") show a colour negative unless
-// display inversion is enabled. Set to false if colours look inverted.
-constexpr bool kInvertDisplay = true;
-// ILI9341 gamma tables written after init (ui/panel_gamma). Inversion mirrors
+// display inversion is enabled (per board).
+constexpr bool kInvertDisplay = board::kInvertDisplay;
+// ILI9341 only (skipped on other panels): gamma tables written after init (ui/panel_gamma). Inversion mirrors
 // the gamma curve, so photos come out washed out; Reselect looked best on the
 // user's board (all three compared on 2026-10-31).
 enum class PanelGamma : uint8_t {
@@ -34,13 +38,13 @@ constexpr uint32_t kGammaFixSettleMs = 120;  // Reselect, once during setup()
 // ILI9341_2_DRIVER init), 0x13 ~100 Hz, 0x10 ~119 Hz. A higher refresh rate
 // hides the slow "rolling" shimmer of these TN panels. 0 keeps the init value.
 constexpr uint8_t kPanelFrameRateRtna = 0x13;
-constexpr int16_t kScreenWidth = 320;
-constexpr int16_t kScreenHeight = 240;
+constexpr int16_t kScreenWidth = board::kScreenWidth;
+constexpr int16_t kScreenHeight = board::kScreenHeight;
 
 // ---------------------------------------------------------------------------
 // Backlight (LEDC PWM on the TFT_BL pin) and the light sensor (LDR)
 // ---------------------------------------------------------------------------
-constexpr uint8_t kBacklightPin = 21;  // same as TFT_BL in platformio.ini
+constexpr uint8_t kBacklightPin = board::kBacklightPin;  // = TFT_BL in platformio.ini
 constexpr uint8_t kBacklightPwmChannel = 7;
 constexpr uint32_t kBacklightPwmHz = 5000;
 constexpr uint8_t kBacklightPwmBits = 8;
@@ -50,7 +54,7 @@ constexpr uint8_t kBacklightMediumPct = 55;
 constexpr uint8_t kBacklightLowPct = 20;
 // Auto: dark room -> kBacklightAutoMinPct, bright room -> 100 %.
 constexpr uint8_t kBacklightAutoMinPct = 10;
-constexpr uint8_t kLdrPin = 34;  // ADC1, input only
+constexpr uint8_t kLdrPin = board::kLdrPin;  // ADC1, input only
 // Raw ADC readings (0 dB attenuation) of a bright and a dark room; linear in
 // between. The "[light] raw=" log line shows the value to tune these.
 constexpr uint16_t kLdrBrightRaw = 20;
@@ -61,21 +65,29 @@ constexpr uint8_t kBacklightFadeStepPct = 2;  // per sample, so changes fade in
 constexpr uint32_t kLightLogMs = 10000;       // Serial log in Auto mode, 0 = off
 
 // ---------------------------------------------------------------------------
-// Touch controller XPT2046 (bit-banged SPI, so the SD card can use VSPI)
+// Touch controller XPT2046: own pins bit-banged (2.8", so the SD card can use
+// VSPI) or on the TFT's SPI bus (3.5"), see board::kTouchSharesTftSpi
 // ---------------------------------------------------------------------------
-constexpr uint8_t kTouchClk = 25;
-constexpr uint8_t kTouchMosi = 32;
-constexpr uint8_t kTouchMiso = 39;
-constexpr uint8_t kTouchCs = 33;
-constexpr uint8_t kTouchIrq = 36;
+constexpr bool kTouchSharesTftSpi = board::kTouchSharesTftSpi;
+constexpr uint8_t kTouchClk = board::kTouchClk;
+constexpr uint8_t kTouchMosi = board::kTouchMosi;
+constexpr uint8_t kTouchMiso = board::kTouchMiso;
+constexpr uint8_t kTouchCs = board::kTouchCs;
+constexpr uint8_t kTouchIrq = board::kTouchIrq;
+constexpr uint32_t kTouchSpiHz = 2000000;  // shared bus: XPT2046 limit is 2.5 MHz
 constexpr uint32_t kTouchDebounceMs = 300;
 constexpr uint8_t kTouchSamples = 4;  // raw readings averaged per tap
-// Default raw->screen mapping (raw value at screen x = 0 / x = 319 and
-// y = 0 / y = 239) until the user calibrates. Typical for CYD boards.
-constexpr int16_t kTouchRawLeft = 200;
-constexpr int16_t kTouchRawRight = 3700;
-constexpr int16_t kTouchRawTop = 240;
-constexpr int16_t kTouchRawBottom = 3800;
+// The panel is polled on its own task; taps queue up while loop() is busy.
+constexpr uint32_t kTouchPollMs = 10;
+constexpr uint8_t kTouchQueueLen = 8;
+constexpr uint32_t kTouchTaskStackBytes = 3072;  // Serial.printf of each tap
+constexpr int kTouchTaskCore = 1;
+constexpr int kTouchTaskPriority = 2;  // above loop() and the network task
+// Default raw->screen mapping until the user calibrates (per board).
+constexpr int16_t kTouchRawLeft = board::kTouchRawLeft;
+constexpr int16_t kTouchRawRight = board::kTouchRawRight;
+constexpr int16_t kTouchRawTop = board::kTouchRawTop;
+constexpr int16_t kTouchRawBottom = board::kTouchRawBottom;
 // Calibration: targets are drawn this far from two opposite corners, and a
 // result spanning fewer raw units than this is rejected as a mis-tap.
 constexpr int16_t kCalTargetInset = 24;
@@ -104,10 +116,12 @@ constexpr uint8_t kPhotoTone = 1;
 // ---------------------------------------------------------------------------
 // OTA firmware updates (GitHub Pages of the project, written by tools/release.py)
 // ---------------------------------------------------------------------------
-// {"version", "url", "size", "md5"}; *.github.io chains to ISRG Root X1, which
-// is already in open_meteo_root_ca.h.
-constexpr char kOtaManifestUrl[] =
-    "https://henrydosg.github.io/CYD_Weather_station/ota/latest.json";
+// {"version", "url", "size", "md5"}; *.github.io is Let's Encrypt, like the
+// roots in open_meteo_root_ca.h. Each board reads its own manifest
+// (BOARD_OTA_MANIFEST in include/boards/: the 2.8" keeps "latest.json", which
+// the devices in use already read). tools/release.py reads CYD_PAGES_URL.
+#define CYD_PAGES_URL "https://henrydosg.github.io/CYD_Weather_station"
+constexpr char kOtaManifestUrl[] = CYD_PAGES_URL "/ota/" BOARD_OTA_MANIFEST;
 constexpr uint32_t kOtaFirstCheckMs = 60000;          // after WiFi connects
 constexpr uint32_t kOtaCheckIntervalMs = 86400000UL;  // then once a day
 constexpr uint32_t kOtaStallTimeoutMs = 20000;        // no data while downloading
@@ -115,6 +129,14 @@ constexpr uint32_t kOtaRebootDelayMs = 2000;          // "Restarting..." stays t
 constexpr uint16_t kOtaChunkBytes = 2048;             // written per loop iteration
 constexpr uint8_t kMaxVersionLen = 15;
 constexpr uint8_t kMaxUrlLen = 159;
+// A new firmware must reach WiFi + one weather fetch within this time after
+// booting, otherwise the device goes back to the previous one (sys/boot_health).
+constexpr uint32_t kOtaVerifyWindowMs = 600000;  // 10 min
+// loop() and the network task must come round within this time, otherwise the
+// device restarts. loop() no longer makes requests; one HTTPS request on the
+// network task is bounded by kTlsHandshakeSec + kHttpTimeoutMs + kHttpBodyMaxMs,
+// and the task feeds the watchdog while it waits for data.
+constexpr uint32_t kLoopWatchdogSec = 30;
 
 // ---------------------------------------------------------------------------
 // Remote message ("Lời nhắn"): docs/message.json, written by tools/message.py
@@ -135,6 +157,7 @@ constexpr double kLunarTimeZoneHours = 7.0;
 // Settings (stored in NVS via Preferences)
 // ---------------------------------------------------------------------------
 constexpr char kSettingsNamespace[] = "cyd-weather";
+constexpr char kBootNamespace[] = "cyd-boot";  // boot / crash counters, rollback
 constexpr uint8_t kDefaultLanguage = 0;  // 0 = Vietnamese, 1 = English
 
 // ---------------------------------------------------------------------------
@@ -191,6 +214,12 @@ constexpr uint32_t kRotatePauseMs = 60000;  // after a tap, rotation waits this 
 // Settings, lists, keyboard and the graph go back to the main screen after
 // this long without a tap (the photo viewer stays: it is a photo frame).
 constexpr uint32_t kMenuIdleMs = 120000;
+// The dashboard left alone this long goes back to the hourglass clock.
+constexpr uint32_t kClockReturnMs = 60000;
+// While the hourglass clock is shown the forecast is refreshed as usual
+// (kWeatherRefreshMs, so opening the weather station rarely has to wait), but
+// the air-quality request (not shown on the clock) only this often.
+constexpr uint32_t kClockAirQualityRefreshMs = 30UL * 60UL * 1000UL;
 
 // ---------------------------------------------------------------------------
 // Open-Meteo (free, no API key; non-commercial limit 10 000 calls per day)
@@ -219,5 +248,17 @@ constexpr uint8_t kMaxSearchLen = 40;
 constexpr uint32_t kWeatherRefreshMs = 10UL * 60UL * 1000UL;  // all cities in one request
 constexpr uint32_t kWeatherRetryMs = 60UL * 1000UL;           // after an error
 constexpr uint16_t kHttpTimeoutMs = 8000;
+// WiFiClientSecure waits up to 120 s for a TLS handshake by default; on weak
+// WiFi that outlasted the watchdog and restarted the device.
+constexpr uint32_t kTlsHandshakeSec = 10;
+constexpr uint32_t kHttpBodyMaxMs = 20000;  // whole response body, however slow
+
+// All HTTPS requests run on one task (core 1, same priority as loop(), so the
+// two share the core): loop() keeps drawing and reading taps meanwhile.
+constexpr uint32_t kNetTaskStackBytes = 12288;  // TLS handshake + JSON parse
+constexpr int kNetTaskCore = 1;
+constexpr int kNetTaskPriority = 1;
+constexpr uint32_t kNetTaskIdleMs = 20;  // between passes
+constexpr uint32_t kLoopYieldMs = 2;     // loop() sleeps this long each pass
 
 }  // namespace config

@@ -37,6 +37,13 @@
       padding: 12px 22px; font: 600 1rem system-ui, sans-serif; cursor: pointer;
     }
     .version { color: var(--muted); font-size: .9rem; }
+    .boards { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 4px; }
+    .boards label {
+      display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer;
+      border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+    }
+    .boards label:has(input:checked) { border-color: var(--accent); }
+    .boards small { color: var(--muted); display: block; }
     .note { color: var(--warn); }
     code { font-size: .9em; }
   </style>
@@ -44,18 +51,25 @@
 <body>
 <main>
   <h1>CYD Weather Station</h1>
-  <p class="sub">Nạp firmware cho màn hình thời tiết ESP32-2432S028R bằng cáp USB, ngay trên trình duyệt.</p>
+  <p class="sub">Nạp firmware cho màn hình thời tiết CYD bằng cáp USB, ngay trên trình duyệt.</p>
 
   <section class="card">
     <h2>Nạp firmware</h2>
     <ol>
+      <li>Chọn đúng board (chữ in trên mặt sau): bản cho board khác sẽ không lên hình.</li>
       <li>Dùng <b>Chrome</b> hoặc <b>Edge</b> trên máy tính (Firefox, Safari không hỗ trợ).</li>
       <li>Cắm CYD vào máy tính bằng cáp USB (cáp có truyền dữ liệu, không phải cáp chỉ sạc).</li>
       <li>Bấm nút bên dưới, chọn cổng <code>USB-SERIAL CH340</code> (COM...), rồi <b>Install</b>.</li>
       <li>Đợi khoảng 1 phút đến khi báo xong. Cài đặt WiFi, thành phố vẫn được giữ.</li>
     </ol>
+    <div class="boards" role="radiogroup" aria-label="Board">
+      <label><input type="radio" name="board" value="manifest.json" checked>
+        <span>2.8" ESP32-2432S028R<small>320 x 240</small></span></label>
+      <label><input type="radio" name="board" value="manifest-cyd35.json">
+        <span>3.5" ESP32-3248S035R<small>480 x 320</small></span></label>
+    </div>
     <div class="install" style="margin-top:16px">
-      <esp-web-install-button manifest="manifest.json">
+      <esp-web-install-button id="install" manifest="manifest.json">
         <button slot="activate">Kết nối và nạp firmware</button>
         <span slot="unsupported" class="note">Trình duyệt này không nạp được. Hãy mở trang bằng Chrome hoặc Edge trên máy tính.</span>
         <span slot="not-allowed" class="note">Trang phải mở qua https.</span>
@@ -80,9 +94,18 @@
   </section>
 </main>
 <script>
-  fetch("manifest.json").then(r => r.json())
-    .then(m => { document.getElementById("version").textContent = "Phiên bản: v" + m.version; })
-    .catch(() => {});
+  const install = document.getElementById("install");
+  const version = document.getElementById("version");
+  function pick(manifest) {
+    install.setAttribute("manifest", manifest);
+    version.textContent = "";
+    fetch(manifest).then(r => r.json())
+      .then(m => { version.textContent = "Phiên bản: v" + m.version; })
+      .catch(() => { version.textContent = "Chưa có bản cho board này."; });
+  }
+  document.querySelectorAll('input[name="board"]').forEach(r =>
+    r.addEventListener("change", () => pick(r.value)));
+  pick(document.querySelector('input[name="board"]:checked').value);
 </script>
 </body>
 </html>

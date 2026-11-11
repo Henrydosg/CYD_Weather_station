@@ -222,7 +222,7 @@ bool OpenMeteoClient::fetchAirQuality() {
   return true;
 }
 
-void OpenMeteoClient::update(uint32_t now, bool networkUp) {
+void OpenMeteoClient::update(uint32_t now, bool networkUp, bool withAirQuality) {
   if (!networkUp || count_ == 0) {
     return;
   }
@@ -233,7 +233,13 @@ void OpenMeteoClient::update(uint32_t now, bool networkUp) {
       if (fetchForecast()) {
         ++version_;
         lastSuccess_ = millis();
-        step_ = Step::AirQuality;  // next loop iteration
+        if (withAirQuality_) {
+          step_ = Step::AirQuality;  // next loop iteration
+          return;
+        }
+        status_ = FetchStatus::Ok;
+        nextDelayMs_ = config::kWeatherRefreshMs;
+        lastAttempt_ = millis();
         return;
       }
       status_ = FetchStatus::Error;
@@ -241,6 +247,8 @@ void OpenMeteoClient::update(uint32_t now, bool networkUp) {
     } else {
       if (fetchAirQuality()) {  // optional: the forecast is shown without it
         ++version_;
+        aqiValid_ = true;
+        lastAqi_ = millis();
       }
       status_ = FetchStatus::Ok;
       nextDelayMs_ = config::kWeatherRefreshMs;
@@ -255,5 +263,6 @@ void OpenMeteoClient::update(uint32_t now, bool networkUp) {
     refreshRequested_ = false;
     status_ = FetchStatus::Fetching;
     step_ = Step::Forecast;
+    withAirQuality_ = withAirQuality;
   }
 }

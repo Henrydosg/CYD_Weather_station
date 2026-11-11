@@ -1,12 +1,13 @@
 // Firmware update screen (Settings -> Firmware): installed version, the state
-// of the OTA check / download, one button (Check or Update) and a progress bar.
+// of the OTA check / download (or a rolled back version), one button (Check or
+// Update), a progress bar and the "Info" header button (device info screen).
 #pragma once
 
 #include <TFT_eSPI.h>
 
 #include "ui_state.h"
 
-enum class UpdateTarget : uint8_t { None, Back, Action };
+enum class UpdateTarget : uint8_t { None, Back, Action, Info };
 
 class ScreenUpdate {
  public:

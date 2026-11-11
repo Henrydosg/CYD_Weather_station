@@ -3,6 +3,7 @@
 #include "assets/fonts.h"
 #include "config.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -12,17 +13,23 @@ namespace {
 
 constexpr int16_t kW = config::kScreenWidth;
 // Header: envelope and title
-constexpr int16_t kEnvX = 12, kEnvY = 9, kEnvW = 26, kEnvH = 18, kEnvStroke = 2;
-constexpr int16_t kTitleX = 48, kTitleMidY = 18, kTitleMaxW = kW - kTitleX - 8;
-constexpr int16_t kRuleX = 6, kRuleY = 40;
+constexpr int16_t kEnvX = ui::lay::X(12);
+constexpr int16_t kEnvY = ui::lay::Y(9);
+constexpr int16_t kEnvW = ui::lay::X(26);
+constexpr int16_t kEnvH = ui::lay::Y(18);
+constexpr int16_t kEnvStroke = ui::lay::S(2);
+constexpr int16_t kTitleX = ui::lay::X(48);
+constexpr int16_t kTitleMidY = ui::lay::Y(18);
+constexpr int16_t kTitleMaxW = kW - kTitleX - 8;
+constexpr int16_t kRuleX = ui::lay::X(6), kRuleY = ui::lay::Y(40);
 // Text
-constexpr int16_t kTextX = 16, kTextY = 58, kTextMaxW = kW - 2 * kTextX;
-constexpr int16_t kLineH = 21;
+constexpr int16_t kTextX = ui::lay::X(16), kTextY = ui::lay::Y(58), kTextMaxW = kW - 2 * kTextX;
+constexpr int16_t kLineH = ui::lay::Y(21);
 constexpr int kMaxLines = 6;
 // OK button (hit area a bit larger than the pill)
-constexpr int16_t kButtonW = 140, kButtonH = 40;
-constexpr int16_t kButtonX = (kW - kButtonW) / 2, kButtonY = 190;
-constexpr int16_t kHitPad = 12;
+constexpr int16_t kButtonW = ui::lay::X(140), kButtonH = ui::lay::Y(40);
+constexpr int16_t kButtonX = (kW - kButtonW) / 2, kButtonY = ui::lay::Y(190);
+constexpr int16_t kHitPad = ui::lay::S(12);
 
 void drawEnvelope(TFT_eSPI& tft, uint16_t color) {
   for (int16_t i = 0; i < kEnvStroke; ++i) {

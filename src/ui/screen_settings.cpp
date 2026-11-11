@@ -3,6 +3,7 @@
 #include "assets/fonts.h"
 #include "config.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -10,24 +11,24 @@ using ui::useFont;
 
 namespace {
 
-constexpr int16_t kMargin = 6;
+constexpr int16_t kMargin = ui::lay::X(6);
 constexpr int16_t kRowX = kMargin;
 constexpr int16_t kRowW = config::kScreenWidth - 2 * kMargin;
-constexpr int16_t kRowY0 = 40, kRowH = 30, kRowPitch = 33;
+constexpr int16_t kRowY0 = ui::lay::Y(40), kRowH = ui::lay::Y(30), kRowPitch = ui::lay::Y(33);
 constexpr int16_t kTextX = kRowX + 12;
 constexpr int16_t kChevronX = kRowX + kRowW - 12;
 constexpr int16_t kValueRightX = kChevronX - 14;
-constexpr int16_t kValueMaxW = 130;
-constexpr int16_t kTitleMaxW = 120;
+constexpr int16_t kValueMaxW = ui::lay::X(130);
+constexpr int16_t kTitleMaxW = ui::lay::X(120);
 // "Photos" button in the header (top right)
-constexpr int16_t kPhotosW = 84, kPhotosH = 28;
-constexpr int16_t kPhotosX = config::kScreenWidth - 8 - kPhotosW, kPhotosY = 4;
+constexpr int16_t kPhotosW = ui::lay::X(84), kPhotosH = ui::lay::Y(28);
+constexpr int16_t kPhotosX = config::kScreenWidth - 8 - kPhotosW, kPhotosY = ui::lay::Y(4);
 constexpr int16_t kPhotosHitX = kPhotosX - 10;
 // "VI | EN" toggle left of it; the current language is highlighted
-constexpr int16_t kLangW = 60, kLangH = 28;
-constexpr int16_t kLangX = kPhotosX - 8 - kLangW, kLangY = 4;
+constexpr int16_t kLangW = ui::lay::X(60), kLangH = ui::lay::Y(28);
+constexpr int16_t kLangX = kPhotosX - 8 - kLangW, kLangY = ui::lay::Y(4);
 constexpr int16_t kLangHitX = kLangX - 10;
-constexpr int16_t kLangRuleInset = 8;
+constexpr int16_t kLangRuleInset = ui::lay::X(8);
 
 enum Row : int {
   kCitiesRow, kRotationRow, kBrightnessRow, kCalibrateRow, kWifiRow, kFirmwareRow, kRowCount

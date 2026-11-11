@@ -9,3 +9,6 @@ include/secrets.h
 
 # PC previews and test charts (tools/preview_screen.py, tools/make_test_chart.py)
 previews/
+
+# Python bytecode
+__pycache__/

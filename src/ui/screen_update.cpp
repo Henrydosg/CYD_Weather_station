@@ -3,6 +3,7 @@
 #include "assets/fonts.h"
 #include "config.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -12,15 +13,24 @@ namespace {
 
 constexpr int16_t kW = config::kScreenWidth;
 constexpr int16_t kH = config::kScreenHeight;
-constexpr int16_t kTitleMaxW = 280;
-constexpr int16_t kBodyY = 44;
-constexpr int16_t kVersionMidY = 70;
-constexpr int16_t kStatusMidY = 102;
-constexpr int16_t kBarX = 30, kBarY = 122, kBarW = kW - 60, kBarH = 12;
-constexpr int16_t kNoteMidY = 152;
-constexpr int16_t kPctMidY = 170, kPctBoxW = 140, kPctBoxH = 16;  // "Downloading 42%"
-constexpr int16_t kButtonW = 180, kButtonH = 40;
-constexpr int16_t kButtonX = (kW - kButtonW) / 2, kButtonY = 182;
+constexpr int16_t kTitleMaxW = ui::lay::X(180);
+// "Info" button in the header (top right)
+constexpr int16_t kInfoW = ui::lay::X(100), kInfoH = ui::lay::Y(28);
+constexpr int16_t kInfoX = kW - 8 - kInfoW, kInfoY = ui::lay::Y(4);
+constexpr int16_t kInfoHitX = kInfoX - 10;
+constexpr int16_t kBodyY = ui::lay::Y(44);
+constexpr int16_t kVersionMidY = ui::lay::Y(70);
+constexpr int16_t kStatusMidY = ui::lay::Y(102);
+constexpr int16_t kBarX = ui::lay::X(30);
+constexpr int16_t kBarY = ui::lay::Y(122);
+constexpr int16_t kBarW = kW - 60;
+constexpr int16_t kBarH = ui::lay::Y(12);
+constexpr int16_t kNoteMidY = ui::lay::Y(152);
+constexpr int16_t kPctMidY = ui::lay::Y(170);
+constexpr int16_t kPctBoxW = ui::lay::X(140);
+constexpr int16_t kPctBoxH = ui::lay::Y(16);  // "Downloading 42%"
+constexpr int16_t kButtonW = ui::lay::X(180), kButtonH = ui::lay::Y(40);
+constexpr int16_t kButtonX = (kW - kButtonW) / 2, kButtonY = ui::lay::Y(182);
 constexpr int16_t kTextMaxW = kW - 24;
 constexpr uint8_t kPercent = 100;
 
@@ -30,7 +40,9 @@ bool online(const UiState& s) { return s.wifi == WifiState::Connected; }
 
 void ScreenUpdate::show(const UiState& s) {
   tft_.fillScreen(kBackground);
-  ui::drawBackHeader(tft_, tr(Str::UpdateTitle), kTitleMaxW);
+  ui::drawBackHeader(tft_, tr(Str::Firmware), kTitleMaxW);
+  useFont(tft_, kFontSmall);
+  ui::drawPill(tft_, kInfoX, kInfoY, kInfoW, kInfoH, tr(Str::InfoButton), kAccent, kAccent, true);
   drawBody(s);
 }
 
@@ -66,6 +78,9 @@ UpdateTarget ScreenUpdate::hitTest(int16_t x, int16_t y, const UiState& s) const
   if (ui::hit(x, y, 0, 0, ui::kBackHitW, ui::kBackHitH)) {
     return UpdateTarget::Back;
   }
+  if (ui::hit(x, y, kInfoHitX, 0, kW - kInfoHitX, ui::kBackHitH)) {
+    return UpdateTarget::Info;
+  }
   if (hasButton(s) && ui::hit(x, y, kButtonX, kButtonY, kButtonW, kButtonH)) {
     return UpdateTarget::Action;
   }
@@ -88,7 +103,14 @@ void ScreenUpdate::drawBody(const UiState& s) {
 
   uint16_t color = kMuted;
   const char* note = nullptr;
-  if (!online(s) && ota.state != OtaState::Downloading && ota.state != OtaState::Restarting) {
+  const BootReport* boot = s.system.boot;
+  const bool rolledBack = boot != nullptr && boot->failedVersion[0] != '\0' &&
+                          (ota.state == OtaState::Idle || ota.state == OtaState::UpToDate);
+  if (rolledBack && online(s)) {
+    snprintf(buf, sizeof(buf), tr(Str::UpdateRolledBackFmt), boot->failedVersion);
+    color = kWarn;
+    note = tr(Str::UpdateRolledBackNote);
+  } else if (!online(s) && ota.state != OtaState::Downloading && ota.state != OtaState::Restarting) {
     strlcpy(buf, tr(Str::UpdateNoWifi), sizeof(buf));
     color = kError;
   } else {

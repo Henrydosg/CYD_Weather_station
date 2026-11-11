@@ -32,14 +32,18 @@ UiController::UiController(TFT_eSPI& tft)
       search_(tft),
       photos_(tft),
       update_(tft),
+      info_(tft),
       message_(tft) {}
 
 void UiController::begin(const Settings& settings) {
   tft_.setRotation(config::kScreenRotation);
   tft_.invertDisplay(config::kInvertDisplay);
-  applyPanelGamma(tft_, config::kPanelGamma);
+  constexpr bool kIli9341 = board::kPanel == board::Panel::Ili9341;
+  if (kIli9341) {  // ILI9341 registers: gamma tables and frame rate
+    applyPanelGamma(tft_, config::kPanelGamma);
+  }
   photos_.setTone(config::kPhotoTone);
-  if (config::kPanelFrameRateRtna != 0) {
+  if (kIli9341 && config::kPanelFrameRateRtna != 0) {
     tft_.writecommand(kIliFrameRate);
     tft_.writedata(kFrameRateDivA);
     tft_.writedata(config::kPanelFrameRateRtna);
@@ -50,6 +54,15 @@ void UiController::begin(const Settings& settings) {
     showDashboard();
   } else {
     showCalibration(Screen::Dashboard);
+  }
+}
+
+void UiController::enter(uint32_t now, bool toSettings) {
+  lastTapAt_ = now;
+  tft_.setRotation(config::kScreenRotation);
+  if (screen_ != Screen::Calibration) {
+    showDashboard();
+    settingsPending_ = toSettings;
   }
 }
 
@@ -75,6 +88,11 @@ void UiController::showWifi(const UiState& state, bool resetPage) {
 }
 
 UiCommand UiController::update(const UiState& state, const TouchEvent& touch, uint32_t now) {
+  if (settingsPending_) {  // straight from the clock's gear
+    settingsPending_ = false;
+    showSettings(state);
+    return UiCommand{};
+  }
   if (touch.tapped) {
     lastTapAt_ = now;
   }
@@ -127,6 +145,14 @@ UiCommand UiController::update(const UiState& state, const TouchEvent& touch, ui
       return UiCommand{};
     case Screen::Update:
       return updateUpdate(state, touch);
+    case Screen::Info:
+      if (touch.tapped && info_.hitBack(touch.x, touch.y)) {
+        screen_ = Screen::Update;
+        update_.show(state);
+      } else {
+        info_.update(state);
+      }
+      return UiCommand{};
     case Screen::Message: {
       UiCommand cmd;
       if (touch.tapped && message_.hitDone(touch.x, touch.y)) {
@@ -160,9 +186,20 @@ UiCommand UiController::updateDashboard(const UiState& state, const TouchEvent& 
     dashboardPending_ = false;
     dashboard_.show(state, now);
   }
+  if (!touch.tapped && now - lastTapAt_ >= config::kClockReturnMs) {
+    UiCommand cmd;
+    cmd.action = UiAction::ShowClock;
+    return cmd;
+  }
   if (touch.tapped) {
     dashboard_.pause(now);
-    if (dashboard_.hitTest(touch.x, touch.y) == DashTarget::Settings) {
+    const DashTarget target = dashboard_.hitTest(touch.x, touch.y);
+    if (target == DashTarget::Clock) {
+      UiCommand cmd;
+      cmd.action = UiAction::ShowClock;  // tap on the time: the hourglass
+      return cmd;
+    }
+    if (target == DashTarget::Settings) {
       showSettings(state);
     } else {
       screen_ = Screen::Graph;
@@ -418,6 +455,10 @@ UiCommand UiController::updateUpdate(const UiState& state, const TouchEvent& tou
       cmd.action = state.ota != nullptr && state.ota->state == OtaState::Available
                        ? UiAction::InstallUpdate
                        : UiAction::CheckUpdate;
+      break;
+    case UpdateTarget::Info:
+      screen_ = Screen::Info;
+      info_.show(state);
       break;
     case UpdateTarget::None:
       break;

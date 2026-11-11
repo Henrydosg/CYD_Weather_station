@@ -86,7 +86,10 @@ void WifiManager::connectTo(const char* ssid, const char* password, uint32_t now
   startConnect(now);
 }
 
-void WifiManager::startScan() { scanRequested_ = true; }
+void WifiManager::startScan() {
+  scanRequested_ = true;
+  scanRequestedAt_ = millis();
+}
 
 void WifiManager::update(uint32_t now) {
   pollScan(now);
@@ -241,7 +244,8 @@ void WifiManager::pollScan(uint32_t now) {
       }
       return;
     }
-    Serial.printf("[wifi] scan done: %d network(s)\n", found);
+    Serial.printf("[wifi] scan done: %d network(s) in %lu ms\n", found,
+                  static_cast<unsigned long>(now - scanStarted_));
     if (found == 0 && emptyScans_ < config::kWifiEmptyScanRetries) {
       // The first scan after start-up sometimes finds nothing: try again.
       ++emptyScans_;
@@ -262,8 +266,8 @@ void WifiManager::pollScan(uint32_t now) {
     return;
   }
 
-  // Start a requested scan unless a connect attempt is using the radio.
-  if (scanRequested_ && state_ != WifiState::Connecting) {
+  // Start a requested scan unless a connect attempt or a request uses the radio.
+  if (scanRequested_ && scanAllowed_ && state_ != WifiState::Connecting) {
     if (scanState_ != ScanState::Idle || emptyScans_ == 0) {
       emptyScans_ = 0;  // a new request from the UI (not an automatic repeat)
     }
@@ -272,8 +276,10 @@ void WifiManager::pollScan(uint32_t now) {
     scanState_ = r == WIFI_SCAN_FAILED ? ScanState::Failed : ScanState::Scanning;
     scanStarted_ = now;
     ++scanVersion_;
-    Serial.println(scanState_ == ScanState::Failed ? "[wifi] scan could not start"
-                                                   : "[wifi] scanning");
+    // The wait shows how long a connect attempt kept the radio busy.
+    Serial.printf("[wifi] %s (waited %lu ms)\n",
+                  scanState_ == ScanState::Failed ? "scan could not start" : "scanning",
+                  static_cast<unsigned long>(now - scanRequestedAt_));
   }
 }
 

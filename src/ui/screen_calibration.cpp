@@ -5,6 +5,7 @@
 #include "assets/fonts.h"
 #include "config.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -17,9 +18,9 @@ constexpr int16_t kInset = config::kCalTargetInset;
 constexpr int16_t kX1 = kInset, kY1 = kInset;
 constexpr int16_t kX2 = kW - 1 - kInset, kY2 = kH - 1 - kInset;
 
-constexpr int16_t kArm = 12;        // crosshair half length
-constexpr int16_t kRingR = 7;
-constexpr float kStroke = 0.8f;
+constexpr int16_t kArm = ui::lay::S(12);        // crosshair half length
+constexpr int16_t kRingR = ui::lay::S(7);
+constexpr float kStroke = ui::lay::Sf(0.8f);
 constexpr int16_t kMessageY = kH / 2;
 constexpr int16_t kStepY = kMessageY + 24;
 

@@ -1,6 +1,8 @@
 #include "touch_input.h"
 
 #include <Arduino.h>
+#include <SPI.h>
+#include <TFT_eSPI.h>
 
 #include "config.h"
 
@@ -37,19 +39,26 @@ int16_t bestTwoAverage(int16_t a, int16_t b, int16_t c) {
 
 }  // namespace
 
+// Call after tft.init(): on a shared bus the SPI pins belong to TFT_eSPI.
 void TouchInput::begin() {
-  pinMode(config::kTouchClk, OUTPUT);
-  pinMode(config::kTouchMosi, OUTPUT);
   pinMode(config::kTouchCs, OUTPUT);
-  pinMode(config::kTouchMiso, INPUT);
-  pinMode(config::kTouchIrq, INPUT);
-  digitalWrite(config::kTouchClk, LOW);
   digitalWrite(config::kTouchCs, HIGH);
+  pinMode(config::kTouchIrq, INPUT);
+  if (!config::kTouchSharesTftSpi) {
+    pinMode(config::kTouchClk, OUTPUT);
+    pinMode(config::kTouchMosi, OUTPUT);
+    pinMode(config::kTouchMiso, INPUT);
+    digitalWrite(config::kTouchClk, LOW);
+  }
 }
 
 // SPI mode 0, MSB first; digitalWrite keeps the clock well below the
 // controller's 2.5 MHz limit.
+// Shared bus (3.5"): TFT_eSPI's SPIClass inside a transaction opened by read().
 uint8_t TouchInput::transfer(uint8_t out) {
+  if (config::kTouchSharesTftSpi) {
+    return TFT_eSPI::getSPIinstance().transfer(out);
+  }
   uint8_t in = 0;
   for (int bit = 7; bit >= 0; --bit) {
     digitalWrite(config::kTouchMosi, (out >> bit) & 1);
@@ -68,6 +77,12 @@ uint16_t TouchInput::transfer16(uint16_t out) {
 
 bool TouchInput::read(int16_t& rawX, int16_t& rawY) {
   int16_t d[6] = {};
+  // On the shared bus the transaction (bus lock) keeps the display task out
+  // while the touch controller is selected.
+  if (config::kTouchSharesTftSpi) {
+    TFT_eSPI::getSPIinstance().beginTransaction(
+        SPISettings(config::kTouchSpiHz, MSBFIRST, SPI_MODE0));
+  }
   digitalWrite(config::kTouchCs, LOW);
   // Each transfer returns the result of the previous command.
   transfer(kCmdZ1);
@@ -85,12 +100,58 @@ bool TouchInput::read(int16_t& rawX, int16_t& rawY) {
   d[4] = transfer16(kCmdYPowerDown) >> kResultShift;
   d[5] = transfer16(0) >> kResultShift;
   digitalWrite(config::kTouchCs, HIGH);
+  if (config::kTouchSharesTftSpi) {
+    TFT_eSPI::getSPIinstance().endTransaction();
+  }
   if (!pressed) {
     return false;
   }
   rawX = bestTwoAverage(d[0], d[2], d[4]);
   rawY = bestTwoAverage(d[1], d[3], d[5]);
   return true;
+}
+
+void TouchInput::setCalibration(const TouchCalibration& cal) {
+  portENTER_CRITICAL(&calLock_);
+  cal_ = cal;
+  portEXIT_CRITICAL(&calLock_);
+}
+
+bool TouchInput::startTask() {
+  queue_ = xQueueCreate(config::kTouchQueueLen, sizeof(TouchEvent));
+  if (queue_ == nullptr) {
+    return false;
+  }
+  if (xTaskCreatePinnedToCore(taskEntry, "touch", config::kTouchTaskStackBytes, this,
+                              config::kTouchTaskPriority, nullptr,
+                              config::kTouchTaskCore) != pdPASS) {
+    vQueueDelete(queue_);
+    queue_ = nullptr;
+    return false;
+  }
+  return true;
+}
+
+void TouchInput::taskEntry(void* self) {
+  TouchInput& t = *static_cast<TouchInput*>(self);
+  for (;;) {
+    const TouchEvent ev = t.poll(millis());
+    if (ev.tapped) {
+      xQueueSend(t.queue_, &ev, 0);  // a full queue drops the tap
+    }
+    vTaskDelay(pdMS_TO_TICKS(config::kTouchPollMs));
+  }
+}
+
+TouchEvent TouchInput::take(uint32_t now) {
+  if (queue_ == nullptr) {
+    return poll(now);
+  }
+  TouchEvent ev;
+  if (xQueueReceive(queue_, &ev, 0) != pdTRUE) {
+    ev = TouchEvent{};
+  }
+  return ev;
 }
 
 TouchEvent TouchInput::poll(uint32_t now) {
@@ -119,8 +180,11 @@ TouchEvent TouchInput::poll(uint32_t now) {
   ev.tapped = true;
   ev.rawX = static_cast<int16_t>(sx / n);
   ev.rawY = static_cast<int16_t>(sy / n);
-  ev.x = mapAxis(ev.rawX, cal_.rawLeft, cal_.rawRight, config::kScreenWidth);
-  ev.y = mapAxis(ev.rawY, cal_.rawTop, cal_.rawBottom, config::kScreenHeight);
+  portENTER_CRITICAL(&calLock_);
+  const TouchCalibration cal = cal_;
+  portEXIT_CRITICAL(&calLock_);
+  ev.x = mapAxis(ev.rawX, cal.rawLeft, cal.rawRight, config::kScreenWidth);
+  ev.y = mapAxis(ev.rawY, cal.rawTop, cal.rawBottom, config::kScreenHeight);
   Serial.printf("[touch] raw %d,%d -> %d,%d\n", ev.rawX, ev.rawY, ev.x, ev.y);
   return ev;
 }

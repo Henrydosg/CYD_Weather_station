@@ -3,28 +3,28 @@
 
 #include "../icon.h"
 
-extern const Icon kIconClearDay;  // 72x72
-extern const Icon kIconClearNight;  // 72x72
-extern const Icon kIconPartlyDay;  // 72x72
-extern const Icon kIconPartlyNight;  // 72x72
-extern const Icon kIconCloudy;  // 72x72
-extern const Icon kIconFog;  // 72x72
-extern const Icon kIconDrizzle;  // 72x72
-extern const Icon kIconRain;  // 72x72
-extern const Icon kIconSnow;  // 72x72
-extern const Icon kIconThunder;  // 72x72
-extern const Icon kIconClearDaySmall;  // 30x30
-extern const Icon kIconClearNightSmall;  // 30x30
-extern const Icon kIconPartlyDaySmall;  // 30x30
-extern const Icon kIconPartlyNightSmall;  // 30x30
-extern const Icon kIconCloudySmall;  // 30x30
-extern const Icon kIconFogSmall;  // 30x30
-extern const Icon kIconDrizzleSmall;  // 30x30
-extern const Icon kIconRainSmall;  // 30x30
-extern const Icon kIconSnowSmall;  // 30x30
-extern const Icon kIconThunderSmall;  // 30x30
-extern const Icon kIconGear;  // 16x16
-extern const Icon kIconFeels;  // 16x16
-extern const Icon kIconHumidity;  // 16x16
-extern const Icon kIconWind;  // 16x16
-extern const Icon kIconPressure;  // 16x16
+extern const Icon kIconClearDay;  // S 72x72 / M 96x96
+extern const Icon kIconClearNight;  // S 72x72 / M 96x96
+extern const Icon kIconPartlyDay;  // S 72x72 / M 96x96
+extern const Icon kIconPartlyNight;  // S 72x72 / M 96x96
+extern const Icon kIconCloudy;  // S 72x72 / M 96x96
+extern const Icon kIconFog;  // S 72x72 / M 96x96
+extern const Icon kIconDrizzle;  // S 72x72 / M 96x96
+extern const Icon kIconRain;  // S 72x72 / M 96x96
+extern const Icon kIconSnow;  // S 72x72 / M 96x96
+extern const Icon kIconThunder;  // S 72x72 / M 96x96
+extern const Icon kIconClearDaySmall;  // S 30x30 / M 40x40
+extern const Icon kIconClearNightSmall;  // S 30x30 / M 40x40
+extern const Icon kIconPartlyDaySmall;  // S 30x30 / M 40x40
+extern const Icon kIconPartlyNightSmall;  // S 30x30 / M 40x40
+extern const Icon kIconCloudySmall;  // S 30x30 / M 40x40
+extern const Icon kIconFogSmall;  // S 30x30 / M 40x40
+extern const Icon kIconDrizzleSmall;  // S 30x30 / M 40x40
+extern const Icon kIconRainSmall;  // S 30x30 / M 40x40
+extern const Icon kIconSnowSmall;  // S 30x30 / M 40x40
+extern const Icon kIconThunderSmall;  // S 30x30 / M 40x40
+extern const Icon kIconGear;  // S 16x16 / M 21x21
+extern const Icon kIconFeels;  // S 16x16 / M 21x21
+extern const Icon kIconHumidity;  // S 16x16 / M 21x21
+extern const Icon kIconWind;  // S 16x16 / M 21x21
+extern const Icon kIconPressure;  // S 16x16 / M 21x21

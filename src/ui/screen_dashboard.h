@@ -11,7 +11,7 @@
 #include "../calendar/lunar_calendar.h"
 #include "ui_state.h"
 
-enum class DashTarget : uint8_t { Settings, Graph };
+enum class DashTarget : uint8_t { Settings, Clock, Graph };
 
 class ScreenDashboard {
  public:

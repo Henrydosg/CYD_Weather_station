@@ -14,3 +14,7 @@ struct Icon {
 
 // Draw an icon alpha-blended onto a solid background colour.
 void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, uint16_t bg);
+// Same into a sprite. A separate overload is required: TFT_eSPI::pushImage is
+// not virtual, so a sprite passed as TFT_eSPI& would write to the panel over
+// SPI with the sprite's state (that hung the hourglass task).
+void drawIcon(TFT_eSprite& spr, const Icon& icon, int16_t x, int16_t y, uint16_t bg);

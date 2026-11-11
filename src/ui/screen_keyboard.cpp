@@ -4,6 +4,7 @@
 
 #include "assets/fonts.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 #include "theme.h"
 
@@ -13,53 +14,62 @@ using ui::useFont;
 namespace {
 
 constexpr int16_t kW = config::kScreenWidth;
-constexpr int16_t kTitleMaxW = 280;
+constexpr int16_t kTitleMaxW = ui::lay::X(280);
 
 // Password field
-constexpr int16_t kFieldX = 6, kFieldY = 34, kFieldW = kW - 12, kFieldH = 34;
-constexpr int16_t kFieldRadius = 10;
+constexpr int16_t kFieldX = ui::lay::X(6);
+constexpr int16_t kFieldY = ui::lay::Y(34);
+constexpr int16_t kFieldW = kW - 12;
+constexpr int16_t kFieldH = ui::lay::Y(34);
+constexpr int16_t kFieldRadius = ui::lay::S(10);
 constexpr int16_t kFieldTextX = kFieldX + 10;
 constexpr int16_t kFieldMidY = kFieldY + kFieldH / 2;
 constexpr int16_t kToggleRightX = kFieldX + kFieldW - 10;
 constexpr int16_t kToggleHitX = kFieldX + kFieldW - 60;
 constexpr int16_t kFieldTextMaxW = kToggleHitX - kFieldTextX - 6;
-constexpr int16_t kCaretW = 2, kCaretPad = 7;
+constexpr int16_t kCaretW = ui::lay::X(2), kCaretPad = ui::lay::Y(7);
 constexpr char kHiddenChar = '*';  // the font has no bullet glyph
 
 // Keys: 10 per row, 29 x 36 px (touch targets are generous: gaps count too)
-constexpr int16_t kKeyW = 29, kKeyH = 36, kGap = 3, kKeyRadius = 6;
+constexpr int16_t kKeyW = ui::lay::X(29);
+constexpr int16_t kKeyH = ui::lay::Y(36);
+constexpr int16_t kGap = ui::lay::S(3);
+constexpr int16_t kKeyRadius = ui::lay::S(6);
 constexpr int16_t kRowW = 10 * kKeyW + 9 * kGap;
 constexpr int16_t kKeysX = (kW - kRowW) / 2;
-constexpr int16_t kKeysY = 74;
+constexpr int16_t kKeysY = ui::lay::Y(74);
 constexpr int16_t kPitch = kKeyH + kGap;
 constexpr int16_t kWideW = (kRowW - 7 * (kKeyW + kGap) - kGap) / 2;  // Shift / backspace
-constexpr int16_t kSpaceW = 118, kCancelW = 48;
+constexpr int16_t kSpaceW = ui::lay::X(118), kCancelW = ui::lay::X(48);
 constexpr int kRows = 4;
 constexpr uint32_t kPressFlashMs = 120;
 
 const char* const kLower[] = {"qwertyuiop", "asdfghjkl", "zxcvbnm"};
 const char* const kSymbols[] = {"1234567890", "@#$%&*-+()", "_!?/:;'\"."};
 
+// Icon sizes are in base pixels (layout.h), scaled like the rest of the screen.
+constexpr float s(float v) { return ui::lay::Sf(v); }
+
 void drawShiftIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t c, uint16_t bg) {
-  constexpr float r = 1.0f;
-  tft.drawWedgeLine(cx, cy - 8, cx - 8, cy, r, r, c, bg);
-  tft.drawWedgeLine(cx, cy - 8, cx + 8, cy, r, r, c, bg);
-  tft.drawWedgeLine(cx - 8, cy, cx - 4, cy, r, r, c, bg);
-  tft.drawWedgeLine(cx + 8, cy, cx + 4, cy, r, r, c, bg);
-  tft.drawWedgeLine(cx - 4, cy, cx - 4, cy + 7, r, r, c, bg);
-  tft.drawWedgeLine(cx + 4, cy, cx + 4, cy + 7, r, r, c, bg);
-  tft.drawWedgeLine(cx - 4, cy + 7, cx + 4, cy + 7, r, r, c, bg);
+  constexpr float r = ui::lay::Sf(1.0f);
+  tft.drawWedgeLine(cx, cy - s(8), cx - s(8), cy, r, r, c, bg);
+  tft.drawWedgeLine(cx, cy - s(8), cx + s(8), cy, r, r, c, bg);
+  tft.drawWedgeLine(cx - s(8), cy, cx - s(4), cy, r, r, c, bg);
+  tft.drawWedgeLine(cx + s(8), cy, cx + s(4), cy, r, r, c, bg);
+  tft.drawWedgeLine(cx - s(4), cy, cx - s(4), cy + s(7), r, r, c, bg);
+  tft.drawWedgeLine(cx + s(4), cy, cx + s(4), cy + s(7), r, r, c, bg);
+  tft.drawWedgeLine(cx - s(4), cy + s(7), cx + s(4), cy + s(7), r, r, c, bg);
 }
 
 void drawBackspaceIcon(TFT_eSPI& tft, int16_t cx, int16_t cy, uint16_t c, uint16_t bg) {
-  constexpr float r = 1.0f;
-  tft.drawWedgeLine(cx - 10, cy, cx - 4, cy - 7, r, r, c, bg);
-  tft.drawWedgeLine(cx - 10, cy, cx - 4, cy + 7, r, r, c, bg);
-  tft.drawWedgeLine(cx - 4, cy - 7, cx + 10, cy - 7, r, r, c, bg);
-  tft.drawWedgeLine(cx - 4, cy + 7, cx + 10, cy + 7, r, r, c, bg);
-  tft.drawWedgeLine(cx + 10, cy - 7, cx + 10, cy + 7, r, r, c, bg);
-  tft.drawWedgeLine(cx - 1, cy - 3, cx + 5, cy + 3, r, r, c, bg);
-  tft.drawWedgeLine(cx - 1, cy + 3, cx + 5, cy - 3, r, r, c, bg);
+  constexpr float r = ui::lay::Sf(1.0f);
+  tft.drawWedgeLine(cx - s(10), cy, cx - s(4), cy - s(7), r, r, c, bg);
+  tft.drawWedgeLine(cx - s(10), cy, cx - s(4), cy + s(7), r, r, c, bg);
+  tft.drawWedgeLine(cx - s(4), cy - s(7), cx + s(10), cy - s(7), r, r, c, bg);
+  tft.drawWedgeLine(cx - s(4), cy + s(7), cx + s(10), cy + s(7), r, r, c, bg);
+  tft.drawWedgeLine(cx + s(10), cy - s(7), cx + s(10), cy + s(7), r, r, c, bg);
+  tft.drawWedgeLine(cx - s(1), cy - s(3), cx + s(5), cy + s(3), r, r, c, bg);
+  tft.drawWedgeLine(cx - s(1), cy + s(3), cx + s(5), cy - s(3), r, r, c, bg);
 }
 
 }  // namespace

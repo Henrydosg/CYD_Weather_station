@@ -6,6 +6,7 @@
 #include "assets/fonts.h"
 #include "config.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -25,11 +26,11 @@ constexpr float kToneBlueGain[config::kPhotoToneLevels] = {1.0f, 0.97f, 0.93f, 0
 constexpr int kRed5 = 32, kGreen6 = 64;  // RGB565 channel sizes
 
 // Hint screen
-constexpr int16_t kTitleMidY = 20;
-constexpr int16_t kZoneTop = 44, kZoneBottom = 196;
+constexpr int16_t kTitleMidY = ui::lay::Y(20);
+constexpr int16_t kZoneTop = ui::lay::Y(44), kZoneBottom = ui::lay::Y(196);
 constexpr int16_t kZoneMidY = (kZoneTop + kZoneBottom) / 2;
-constexpr int16_t kChevronGap = 10;
-constexpr int16_t kCountMidY = 218;
+constexpr int16_t kChevronGap = ui::lay::X(10);
+constexpr int16_t kCountMidY = ui::lay::Y(218);
 constexpr int16_t kMessageMidY = kH / 2 - 12, kMessageSubMidY = kH / 2 + 16;
 
 TFT_eSPI* gTft = nullptr;

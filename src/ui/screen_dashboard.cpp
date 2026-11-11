@@ -5,8 +5,10 @@
 #include "assets/fonts.h"
 #include "assets/icons.h"
 #include "config.h"
+#include "day_note.h"
 #include "draw_utils.h"
 #include "icon.h"
+#include "layout.h"
 #include "strings.h"
 #include "weather_icons.h"
 
@@ -19,43 +21,49 @@ constexpr int16_t kW = config::kScreenWidth;
 constexpr int16_t kMinutesPerHour = 60;
 
 // Header
-constexpr int16_t kNameX = 8, kNameMidY = 12, kNameMaxW = 196;
-constexpr int16_t kRegionMidY = 31, kRegionMaxW = 170;
-constexpr int16_t kTimeRightX = 288, kTimeMidY = 12;
-constexpr int16_t kBarsX = 294, kBarsBottom = 18;
-constexpr int16_t kDateRightX = 312, kDateMidY = 31;
-constexpr int16_t kLunarGap = 8;   // between the date and the lunar date
-constexpr int16_t kRegionGap = 6;  // between the region and the date
-constexpr int16_t kHeaderH = 40;  // also the tap area for Settings
-constexpr int16_t kRuleY = 40;
-constexpr int16_t kDotPitch = 10, kDotR = 2, kDotActiveR = 3, kDotsPad = 6;
+constexpr int16_t kNameX = ui::lay::X(8), kNameMidY = ui::lay::Y(12), kNameMaxW = ui::lay::X(196);
+constexpr int16_t kRegionMidY = ui::lay::Y(31), kRegionMaxW = ui::lay::X(170);
+constexpr int16_t kTimeRightX = ui::lay::X(288), kTimeMidY = ui::lay::Y(12);
+constexpr int16_t kBarsX = ui::lay::X(294), kBarsBottom = ui::lay::Y(18);
+constexpr int16_t kDateRightX = ui::lay::X(312), kDateMidY = ui::lay::Y(31);
+constexpr int16_t kLunarGap = ui::lay::X(8);   // between the date and the lunar date
+constexpr int16_t kRegionGap = ui::lay::X(6);  // between the region and the date
+constexpr int16_t kHeaderH = ui::lay::Y(40);  // also the tap area for Settings
+// Header right of kClockTapX (time, date): back to the hourglass clock
+constexpr int16_t kClockTapX = ui::lay::X(200);
+constexpr int16_t kRuleY = ui::lay::Y(40);
+constexpr int16_t kDotPitch = ui::lay::X(10);
+constexpr int16_t kDotR = ui::lay::S(2);
+constexpr int16_t kDotActiveR = ui::lay::S(3);
+constexpr int16_t kDotsPad = ui::lay::X(6);
 
 // Current weather (left)
-constexpr int16_t kLeftW = 150;
-constexpr int16_t kBodyY = 42, kBodyH = 114;
-constexpr int16_t kDescMidX = 76, kDescMidY = 54, kDescMaxW = 148;
-constexpr int16_t kIconX = 2, kIconY = 66;
-constexpr int16_t kTempMidX = 112, kTempMidY = 98;
-constexpr int16_t kFeelsMidY = 130;
+constexpr int16_t kLeftW = ui::lay::X(150);
+constexpr int16_t kBodyY = ui::lay::Y(42), kBodyH = ui::lay::Y(114);
+constexpr int16_t kDescMidX = ui::lay::X(76);
+constexpr int16_t kDescMidY = ui::lay::Y(54);
+constexpr int16_t kDescMaxW = ui::lay::X(148);
+constexpr int16_t kIconX = ui::lay::X(2), kIconY = ui::lay::Y(66);
+constexpr int16_t kTempMidX = ui::lay::X(112), kTempMidY = ui::lay::Y(98);
+constexpr int16_t kFeelsMidY = ui::lay::Y(130);
 // Note line (rain / lunar), with a rain drop before rain notes
-constexpr int16_t kNoteTop = 140, kNoteH = 16, kNoteMidY = 147;
-constexpr int16_t kDropW = 12, kDropR = 4, kDropTip = 6;
-constexpr uint32_t kSecondsPerMinute = 60;
-constexpr uint32_t kRoundMinutes = 5;  // "~25 min"
-constexpr int kFullMoonDay = 15;
+constexpr int16_t kNoteTop = ui::lay::Y(140), kNoteH = ui::lay::Y(16), kNoteMidY = ui::lay::Y(147);
+constexpr int16_t kDropW = ui::lay::X(12), kDropR = ui::lay::S(4), kDropTip = ui::lay::S(6);
 
 // Details (right)
-constexpr int16_t kColonX = 230;
-constexpr int16_t kDetailsY = 50, kDetailsPitch = 14;
+constexpr int16_t kColonX = ui::lay::X(230);
+constexpr int16_t kDetailsY = ui::lay::Y(50), kDetailsPitch = ui::lay::Y(14);
 constexpr int kDetailRows = 8;
 
 // 7-day strip
-constexpr int16_t kStripRuleY = 158;
-constexpr int16_t kStripX = 6, kStripW = kW - 12;
-constexpr int16_t kTodayTop = 161, kTodayH = 77, kTodayRadius = 6;
+constexpr int16_t kStripRuleY = ui::lay::Y(158);
+constexpr int16_t kStripX = ui::lay::X(6), kStripW = kW - 12;
+constexpr int16_t kTodayTop = ui::lay::Y(161);
+constexpr int16_t kTodayH = ui::lay::Y(77);
+constexpr int16_t kTodayRadius = ui::lay::S(6);
 constexpr int16_t kDayNameY = 169, kDayDateY = 182, kDayIconY = 189, kDayHighY = 222,
                   kDayLowY = 234;
-constexpr int16_t kSmallIcon = 30;
+constexpr int16_t kSmallIcon = ui::lay::S(30);  // "...Small" icon size of the size class
 
 const CityWeather* current(const UiState& s, uint8_t city) {
   return s.cities != nullptr && city < s.cities->count && s.weather != nullptr
@@ -73,14 +81,6 @@ bool cityTime(const UiState& s, const CityWeather* w, struct tm& out) {
   return true;
 }
 
-// Local wall-clock time of a UTC instant in a city.
-struct tm localTime(uint32_t utc, int32_t offsetSec) {
-  const time_t t = static_cast<time_t>(utc) + offsetSec;
-  struct tm out;
-  gmtime_r(&t, &out);
-  return out;
-}
-
 void formatMinutes(char* buf, size_t size, int16_t minutes) {
   if (minutes < 0) {
     strlcpy(buf, "--:--", size);
@@ -96,8 +96,11 @@ void ScreenDashboard::pause(uint32_t now) {
   pausedAt_ = now;
 }
 
-DashTarget ScreenDashboard::hitTest(int16_t, int16_t y) const {
-  return y < kHeaderH ? DashTarget::Settings : DashTarget::Graph;
+DashTarget ScreenDashboard::hitTest(int16_t x, int16_t y) const {
+  if (y < kHeaderH) {
+    return x >= kClockTapX ? DashTarget::Clock : DashTarget::Settings;
+  }
+  return DashTarget::Graph;
 }
 
 void ScreenDashboard::show(const UiState& s, uint32_t now) {
@@ -300,44 +303,8 @@ void ScreenDashboard::drawNote(const UiState& s, bool force) {
   const CityWeather* w = current(s, city_);
   struct tm t;
   if (cityTime(s, w, t)) {
-    const uint32_t now = static_cast<uint32_t>(s.utcNow);
-    const RainOutlook outlook = rainOutlook(*w, now);
-    const struct tm at = localTime(outlook.atUtc, w->utcOffsetSec);
-    rain = outlook.kind != RainKind::None;
-    switch (outlook.kind) {
-      case RainKind::Soon: {
-        const uint32_t minutes =
-            (outlook.atUtc - now + kSecondsPerMinute - 1) / kSecondsPerMinute;
-        if (minutes < static_cast<uint32_t>(kMinutesPerHour)) {
-          uint32_t rounded = (minutes + kRoundMinutes - 1) / kRoundMinutes * kRoundMinutes;
-          if (rounded < kRoundMinutes) {
-            rounded = kRoundMinutes;
-          }
-          snprintf(text, sizeof(text), tr(Str::RainSoonFmt), static_cast<unsigned>(rounded));
-        } else {
-          snprintf(text, sizeof(text), tr(Str::RainAtFmt), at.tm_hour, at.tm_min);
-        }
-        break;
-      }
-      case RainKind::Raining:
-        snprintf(text, sizeof(text), tr(Str::RainStopsFmt), at.tm_hour, at.tm_min);
-        break;
-      case RainKind::Continues:
-        strlcpy(text, tr(Str::RainContinues), sizeof(text));
-        break;
-      case RainKind::None:
-        updateLunar(t);
-        if (lunar_.day == 1 && lunar_.month == 1 && !lunar_.leap) {
-          strlcpy(text, tr(Str::TetToday), sizeof(text));
-        } else if (lunar_.day == kFullMoonDay) {
-          snprintf(text, sizeof(text), tr(Str::FullMoonFmt), lunar_.month);
-        } else if (lunar_.day == 1) {
-          snprintf(text, sizeof(text), tr(Str::NewMoonFmt), lunar_.month);
-        } else if (tetDays_ > 0) {
-          snprintf(text, sizeof(text), tr(Str::TetCountdownFmt), tetDays_);
-        }
-        break;
-    }
+    updateLunar(t);
+    rain = composeDayNote(w, static_cast<uint32_t>(s.utcNow), lunar_, tetDays_, text, sizeof(text));
   }
   if (!force && strcmp(text, lastNote_) == 0) {
     return;

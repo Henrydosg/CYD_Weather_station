@@ -16,7 +16,9 @@ class OpenMeteoClient {
 
   // Call every loop iteration. Each HTTPS request is synchronous but bounded
   // by config::kHttpTimeoutMs; forecast and air quality run in separate loops.
-  void update(uint32_t now, bool networkUp);
+  // withAirQuality: whether a forecast fetch that starts now is followed by the
+  // air-quality request (the hourglass clock shows no AQI and skips it).
+  void update(uint32_t now, bool networkUp, bool withAirQuality = true);
   void requestRefresh() { refreshRequested_ = true; }
 
   FetchStatus status() const { return status_; }
@@ -24,6 +26,9 @@ class OpenMeteoClient {
   uint32_t version() const { return version_; }
   // millis() of the last successful forecast (valid when version() > 0).
   uint32_t lastSuccessMs() const { return lastSuccess_; }
+  // millis() of the last successful air-quality request (valid when hasAirQuality()).
+  bool hasAirQuality() const { return aqiValid_; }
+  uint32_t lastAirQualityMs() const { return lastAqi_; }
   uint8_t count() const { return count_; }
   const CityWeather* cities() const { return data_; }
 
@@ -43,5 +48,8 @@ class OpenMeteoClient {
   uint32_t lastAttempt_ = 0;
   uint32_t lastSuccess_ = 0;
   uint32_t nextDelayMs_ = 0;
+  bool withAirQuality_ = true;  // of the fetch in progress
+  bool aqiValid_ = false;
+  uint32_t lastAqi_ = 0;
   bool refreshRequested_ = true;  // fetch right after the first connect
 };

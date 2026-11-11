@@ -2,9 +2,11 @@
 
 namespace {
 constexpr uint16_t kMaxIconWidth = 128;
-}
 
-void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, uint16_t bg) {
+// Gfx is TFT_eSPI or TFT_eSprite: called on the static type, so the sprite's
+// own pushImage (into its buffer) is used for sprites.
+template <class Gfx>
+void drawIconOn(Gfx& gfx, const Icon& icon, int16_t x, int16_t y, uint16_t bg) {
   if (icon.width > kMaxIconWidth) {
     return;
   }
@@ -24,4 +26,14 @@ void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, uint16_t bg
     gfx.pushImage(x, y + row, icon.width, 1, line);
   }
   gfx.setSwapBytes(oldSwap);
+}
+
+}  // namespace
+
+void drawIcon(TFT_eSPI& gfx, const Icon& icon, int16_t x, int16_t y, uint16_t bg) {
+  drawIconOn(gfx, icon, x, y, bg);
+}
+
+void drawIcon(TFT_eSprite& spr, const Icon& icon, int16_t x, int16_t y, uint16_t bg) {
+  drawIconOn(spr, icon, x, y, bg);
 }

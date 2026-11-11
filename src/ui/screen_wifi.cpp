@@ -3,6 +3,7 @@
 #include "assets/fonts.h"
 #include "config.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -13,31 +14,33 @@ namespace {
 constexpr int16_t kW = config::kScreenWidth;
 
 // Header: "< WiFi" and an outlined "Rescan" pill
-constexpr int16_t kTitleMaxW = 180;
-constexpr int16_t kRescanW = 92, kRescanH = 28;
-constexpr int16_t kRescanX = kW - 8 - kRescanW, kRescanY = 4;
+constexpr int16_t kTitleMaxW = ui::lay::X(180);
+constexpr int16_t kRescanW = ui::lay::X(92), kRescanH = ui::lay::Y(28);
+constexpr int16_t kRescanX = kW - 8 - kRescanW, kRescanY = ui::lay::Y(4);
 constexpr int16_t kRescanHitX = kRescanX - 10;
 
-constexpr int16_t kStatusX = 10, kStatusMidY = 46, kStatusH = 16;
+constexpr int16_t kStatusX = ui::lay::X(10);
+constexpr int16_t kStatusMidY = ui::lay::Y(46);
+constexpr int16_t kStatusH = ui::lay::Y(16);
 constexpr int16_t kStatusMaxW = kW - 2 * kStatusX;
 
 // List card: four rows per page
-constexpr int16_t kListX = 6, kListY = 60, kListW = kW - 12;
+constexpr int16_t kListX = ui::lay::X(6), kListY = ui::lay::Y(60), kListW = kW - 12;
 constexpr int kRowsPerPage = 4;
-constexpr int16_t kRowH = 36;
+constexpr int16_t kRowH = ui::lay::Y(36);
 constexpr int16_t kListH = kRowsPerPage * kRowH;
-constexpr int16_t kBarsX = 18, kBarsBottomOffset = 7;
-constexpr int16_t kSsidX = 46, kSsidMaxW = 208;
-constexpr int16_t kLockX = 262;
-constexpr int16_t kMarkX = 290;    // check mark / chevron centre
+constexpr int16_t kBarsX = ui::lay::X(18), kBarsBottomOffset = ui::lay::Y(7);
+constexpr int16_t kSsidX = ui::lay::X(46), kSsidMaxW = ui::lay::X(208);
+constexpr int16_t kLockX = ui::lay::X(262);
+constexpr int16_t kMarkX = ui::lay::X(290);    // check mark / chevron centre
 constexpr int16_t kSavedRightX = kListX + kListW - 12;
 constexpr int8_t kRssiLevels[] = {-85, -75, -65, -55};  // dBm for 1..4 bars
 
 // Pager
-constexpr int16_t kPagerY = 210, kPagerH = 28;
-constexpr int16_t kPagerBtnW = 100;
-constexpr int16_t kPrevX = 6, kNextX = kW - 6 - kPagerBtnW;
-constexpr int16_t kPagerHitPad = 4;
+constexpr int16_t kPagerY = ui::lay::Y(210), kPagerH = ui::lay::Y(28);
+constexpr int16_t kPagerBtnW = ui::lay::X(100);
+constexpr int16_t kPrevX = ui::lay::X(6), kNextX = kW - 6 - kPagerBtnW;
+constexpr int16_t kPagerHitPad = ui::lay::S(4);
 
 uint8_t barsFor(int8_t rssi) {
   uint8_t bars = 1;

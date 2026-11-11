@@ -6,6 +6,7 @@
 #include "config.h"
 #include "draw_utils.h"
 #include "icon.h"
+#include "layout.h"
 #include "strings.h"
 #include "weather_icons.h"
 
@@ -16,23 +17,26 @@ namespace {
 
 constexpr int16_t kW = config::kScreenWidth;
 
-constexpr int16_t kNameX = 8, kNameMidY = 12, kNameMaxW = 196;
-constexpr int16_t kSubMidY = 31;
-constexpr int16_t kTimeRightX = 312, kTimeMidY = 12;
-constexpr int16_t kRuleX = 6, kRuleY = 40;
+constexpr int16_t kNameX = ui::lay::X(8), kNameMidY = ui::lay::Y(12), kNameMaxW = ui::lay::X(196);
+constexpr int16_t kSubMidY = ui::lay::Y(31);
+constexpr int16_t kTimeRightX = ui::lay::X(312), kTimeMidY = ui::lay::Y(12);
+constexpr int16_t kRuleX = ui::lay::X(6), kRuleY = ui::lay::Y(40);
 
 // Plot: first point x, spacing, temperature range mapped to y
-constexpr int16_t kPlotX0 = 22, kPlotDx = 39;
-constexpr int16_t kPlotTop = 108, kPlotBottom = 176;
-constexpr float kLineR = 1.0f;
-constexpr int16_t kPointR = 3;
-constexpr int16_t kIconSize = 30, kIconGap = 6;  // icon bottom sits kIconGap above the point
-constexpr int16_t kTempAbove = 44, kHourAbove = 57;
+constexpr int16_t kPlotX0 = ui::lay::X(22), kPlotDx = ui::lay::X(39);
+constexpr int16_t kPlotTop = ui::lay::Y(108), kPlotBottom = ui::lay::Y(176);
+constexpr float kLineR = ui::lay::Sf(1.0f);
+constexpr int16_t kPointR = ui::lay::S(3);
+constexpr int16_t kIconSize = ui::lay::S(30);
+constexpr int16_t kIconGap = ui::lay::Y(6);  // icon bottom sits kIconGap above the point
+constexpr int16_t kTempAbove = ui::lay::Y(44), kHourAbove = ui::lay::Y(57);
 
 // Rain chance
-constexpr int16_t kRainRuleY = 194, kRainLabelY = 202;
-constexpr int16_t kRainBarBottom = 226, kRainBarMaxH = 30, kRainBarHalfW = 6;
-constexpr int16_t kRainTextY = 234;
+constexpr int16_t kRainRuleY = ui::lay::Y(194), kRainLabelY = ui::lay::Y(202);
+constexpr int16_t kRainBarBottom = ui::lay::Y(226);
+constexpr int16_t kRainBarMaxH = ui::lay::Y(30);
+constexpr int16_t kRainBarHalfW = ui::lay::X(6);
+constexpr int16_t kRainTextY = ui::lay::Y(234);
 constexpr int kPercent = 100;
 
 const CityWeather* weatherOf(const UiState& s, uint8_t city) {

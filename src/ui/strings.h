@@ -90,7 +90,6 @@ enum class Str : uint8_t {
   PhotoError,
   // Firmware update
   Firmware,
-  UpdateTitle,
   UpdateVersionFmt,      // printf format, one %s (installed version)
   UpdateTapCheck,
   UpdateChecking,
@@ -118,6 +117,38 @@ enum class Str : uint8_t {
   MessageFromFmt,    // printf: %s sender
   MessageTitle,
   MessageDone,
+  // Rollback notice (Firmware screen) and device info screen
+  UpdateRolledBackFmt,  // printf: %s failed version
+  UpdateRolledBackNote,
+  InfoButton,
+  InfoTitle,
+  InfoVersion,
+  InfoConfirmedFmt,   // printf: %s version
+  InfoVerifyingFmt,   // printf: %s version, %u minutes left
+  InfoUptime,
+  InfoUptimeDaysFmt,  // printf: %lu days, %02u hours, %02u minutes
+  InfoBoots,
+  InfoBootsFmt,       // printf: %lu boots, %lu crashes
+  InfoLastReset,
+  ResetPowerOn,       // ResetKind order
+  ResetRestart,
+  ResetCrash,
+  ResetWatchdog,
+  ResetBrownout,
+  ResetOther,
+  InfoWifi,
+  InfoIp,
+  InfoMac,
+  InfoRam,
+  InfoRamFmt,         // printf: %lu KB free, %lu KB lowest
+  InfoWeather,
+  InfoWeatherAgoFmt,  // printf: %lu minutes
+  InfoWeatherNow,
+  InfoWeatherNone,
+  // Hourglass clock (TIME FALLS)
+  ClockSyncing,
+  ClockNoTime,
+  ClockLoadingWeather,
   Count,
 };
 
@@ -127,6 +158,8 @@ Language currentLanguage();
 const char* tr(Str id);
 // Short weekday, 0 = Sunday (struct tm::tm_wday): "CN", "T2" / "Sun", "Mon".
 const char* weekdayShort(int wday);
+// Full weekday in capitals, 0 = Sunday: "CHỦ NHẬT" / "SUNDAY" (hourglass clock).
+const char* weekdayLong(int wday);
 // Description of a WMO weather code ("Mưa nhẹ" / "Light rain").
 const char* weatherText(uint8_t wmoCode);
 // 8-point compass name for a wind direction in degrees ("ĐN" / "SE").

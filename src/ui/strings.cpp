@@ -92,7 +92,6 @@ const Text kTexts[] = {
     {"Không có ảnh .jpg trong %s", "No .jpg photos in %s"},
     {"Không đọc được ảnh", "Cannot read this photo"},
     {"Firmware", "Firmware"},
-    {"Cập nhật firmware", "Firmware update"},
     {"Phiên bản v%s", "Version v%s"},
     {"Chạm Kiểm tra để tìm bản mới", "Tap Check to look for updates"},
     {"Đang kiểm tra...", "Checking..."},
@@ -118,12 +117,46 @@ const Text kTexts[] = {
     {"Lời nhắn từ %s", "Message from %s"},
     {"Lời nhắn", "Message"},
     {"Đã đọc", "OK"},
+    {"Bản v%s bị lỗi, đã quay lại", "v%s failed, rolled back"},
+    {"Máy tự quay lại bản trước để vẫn chạy được", "The previous version was restored"},
+    {"Thông tin", "Info"},
+    {"Thông tin máy", "Device info"},
+    {"Phiên bản", "Version"},
+    {"v%s  đã xác nhận", "v%s  confirmed"},
+    {"v%s  đang kiểm tra (%u phút)", "v%s  verifying (%u min)"},
+    {"Đang chạy", "Uptime"},
+    {"%lu ngày %02u:%02u", "%lu d %02u:%02u"},
+    {"Khởi động", "Boots"},
+    {"%lu lần, lỗi %lu lần", "%lu, crashes %lu"},
+    {"Lần cuối do", "Last reset"},
+    {"Rút điện / bật lại", "Power on"},
+    {"Khởi động lại", "Restart"},
+    {"Lỗi phần mềm", "Crash"},
+    {"Treo (watchdog)", "Hang (watchdog)"},
+    {"Sụt nguồn", "Brownout"},
+    {"Khác", "Other"},
+    {"WiFi", "WiFi"},
+    {"IP", "IP"},
+    {"MAC", "MAC"},
+    {"RAM trống", "Free RAM"},
+    {"%lu KB (thấp nhất %lu KB)", "%lu KB (lowest %lu KB)"},
+    {"Thời tiết", "Weather"},
+    {"cập nhật %lu phút trước", "updated %lu min ago"},
+    {"vừa cập nhật", "just updated"},
+    {"chưa có dữ liệu", "no data yet"},
+    {"Đang lấy giờ...", "Syncing time..."},
+    {"Chưa có giờ", "Time not set"},
+    {"Đang tải thời tiết...", "Loading weather..."},
 };
 static_assert(sizeof(kTexts) / sizeof(kTexts[0]) == static_cast<size_t>(Str::Count),
               "kTexts must have one entry per Str id");
 
 const Text kWeekdays[] = {{"CN", "Sun"}, {"T2", "Mon"}, {"T3", "Tue"}, {"T4", "Wed"},
                           {"T5", "Thu"}, {"T6", "Fri"}, {"T7", "Sat"}};
+const Text kWeekdaysLong[] = {{"CHỦ NHẬT", "SUNDAY"},   {"THỨ HAI", "MONDAY"},
+                              {"THỨ BA", "TUESDAY"},    {"THỨ TƯ", "WEDNESDAY"},
+                              {"THỨ NĂM", "THURSDAY"},  {"THỨ SÁU", "FRIDAY"},
+                              {"THỨ BẢY", "SATURDAY"}};
 const Text kCompass[] = {{"B", "N"},  {"ĐB", "NE"}, {"Đ", "E"},  {"ĐN", "SE"},
                          {"N", "S"},  {"TN", "SW"}, {"T", "W"},  {"TB", "NW"}};
 const Text kUvLevels[] = {
@@ -185,6 +218,10 @@ const char* tr(Str id) {
 
 const char* weekdayShort(int wday) {
   return wday >= 0 && wday < kDaysPerWeek ? pick(kWeekdays[wday]) : "";
+}
+
+const char* weekdayLong(int wday) {
+  return wday >= 0 && wday < kDaysPerWeek ? pick(kWeekdaysLong[wday]) : "";
 }
 
 const char* weatherText(uint8_t code) {

@@ -3,6 +3,7 @@
 #include "assets/fonts.h"
 #include "config.h"
 #include "draw_utils.h"
+#include "layout.h"
 #include "strings.h"
 
 using namespace theme;
@@ -11,27 +12,33 @@ using ui::useFont;
 namespace {
 
 constexpr int16_t kW = config::kScreenWidth;
-constexpr int16_t kTitleMaxW = 180;
+constexpr int16_t kTitleMaxW = ui::lay::X(180);
 
 // "+ Add" pill in the header
-constexpr int16_t kAddW = 84, kAddH = 28;
-constexpr int16_t kAddX = kW - 8 - kAddW, kAddY = 4;
+constexpr int16_t kAddW = ui::lay::X(84), kAddH = ui::lay::Y(28);
+constexpr int16_t kAddX = kW - 8 - kAddW, kAddY = ui::lay::Y(4);
 constexpr int16_t kAddHitX = kAddX - 10;
 
 // List: up to 8 rows of 25 px
-constexpr int16_t kListY = 40, kRowH = 25;
-constexpr int16_t kIndexX = 16, kNameX = 32, kNameMaxW = 170;
-constexpr int16_t kCountryRightX = 290, kCountryMaxW = 90;
-constexpr int16_t kChevronX = 304;
-constexpr int16_t kSelectInset = 4, kSelectRadius = 6;
+constexpr int16_t kListY = ui::lay::Y(40), kRowH = ui::lay::Y(25);
+constexpr int16_t kIndexX = ui::lay::X(16), kNameX = ui::lay::X(32), kNameMaxW = ui::lay::X(170);
+constexpr int16_t kCountryRightX = ui::lay::X(290), kCountryMaxW = ui::lay::X(90);
+constexpr int16_t kChevronX = ui::lay::X(304);
+constexpr int16_t kSelectInset = ui::lay::X(4), kSelectRadius = ui::lay::S(6);
 
 // Action panel
-constexpr int16_t kPanelX = 30, kPanelY = 60, kPanelW = kW - 60, kPanelH = 130;
+constexpr int16_t kPanelX = ui::lay::X(30);
+constexpr int16_t kPanelY = ui::lay::Y(60);
+constexpr int16_t kPanelW = kW - 60;
+constexpr int16_t kPanelH = ui::lay::Y(130);
 constexpr int16_t kPanelNameY = kPanelY + 22, kPanelRegionY = kPanelY + 42;
-constexpr int16_t kBtnY = kPanelY + 60, kBtnH = 32, kBtnW = 72, kBtnGap = 8;
+constexpr int16_t kBtnY = kPanelY + 60;
+constexpr int16_t kBtnH = ui::lay::Y(32);
+constexpr int16_t kBtnW = ui::lay::X(72);
+constexpr int16_t kBtnGap = ui::lay::X(8);
 constexpr int16_t kBtnX0 = kW / 2 - (3 * kBtnW + 2 * kBtnGap) / 2;
 constexpr int16_t kCloseY = kPanelY + 112;
-constexpr int16_t kCloseHitH = 28;
+constexpr int16_t kCloseHitH = ui::lay::Y(28);
 
 // Last part of "admin1, country": the country.
 const char* countryOf(const char* region) {
@@ -95,10 +102,10 @@ void ScreenCities::drawPanel(const UiState& s) {
   tft_.setTextDatum(MC_DATUM);
   tft_.setTextColor(kInk, kBackground);
   const Language lang = currentLanguage();
-  ui::drawFitted(tft_, cityName(c, lang), kW / 2, kPanelNameY, kPanelW - 20, kFontMedium,
+  ui::drawFitted(tft_, cityName(c, lang), kW / 2, kPanelNameY, kPanelW - ui::lay::X(20), kFontMedium,
                  kFontSmall);
   tft_.setTextColor(kMuted, kBackground);
-  ui::drawFitted(tft_, cityRegion(c, lang), kW / 2, kPanelRegionY, kPanelW - 20, kFontTiny,
+  ui::drawFitted(tft_, cityRegion(c, lang), kW / 2, kPanelRegionY, kPanelW - ui::lay::X(20), kFontTiny,
                  kFontTiny);
 
   useFont(tft_, kFontSmall);

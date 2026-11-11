@@ -6,12 +6,18 @@ quantises to RGB565 like the panel. Sample data only; panel gamma and viewing
 angle are not simulated. Keep it in sync when a screen's layout changes.
 
 Usage (from the project root, needs Pillow):
-    python tools/preview_screen.py --out preview.png [--scale 2] [--screen main|setup|wifi]
+    python tools/preview_screen.py --out preview.png [--scale 2] [--screen main|setup|wifi|info]
+                                   [--board cyd28|cyd35]
       main:  dashboard (Tet countdown, rain soon, raining, full moon) and the 24 h graph
       setup: settings, city manager, action panel, search keyboard, search results,
              photo viewer hint and message, firmware update (available, downloading),
              remote message
       wifi:  WiFi list, password keyboard, connect error
+
+--board cyd35 renders the 3.5" (480 x 320) screens: like the firmware
+(src/ui/layout.h), every position is drawn in base 320 x 240 pixels and scaled,
+x by 1.5 and y by 4/3, radii and strokes by 4/3; fonts and icons use the sizes
+of class M (x 4/3, tools/gen_fonts.py CLASSES).
 """
 
 import argparse
@@ -62,18 +68,96 @@ _icons = {}
 
 
 def icon(name, small=False):
-    key = (name, small)
+    key = (name, small, OUT_W)
     if key not in _icons:
-        _icons[key] = gen_icons.render(ICON_FN[name], gen_icons.BASE, 30 if small else None)
+        size = round((30 if small else gen_icons.BASE) * ls(1))
+        _icons[key] = gen_icons.render(ICON_FN[name], gen_icons.BASE,
+                                       None if size == gen_icons.BASE else size)
     return _icons[key]
 
 
+# ---------------------------------------------------------------------------
+# Board: the screens are written in base 320 x 240 pixels; for a larger board
+# the drawing calls are scaled like ui::lay::X / Y / S in src/ui/layout.h.
+# ---------------------------------------------------------------------------
+BOARDS = {"cyd28": (320, 240), "cyd35": (480, 320)}
+OUT_W, OUT_H = W, H  # pixels of the rendered screen
+_pil_draw = ImageDraw.Draw
+
+
+def lx(v):
+    return v * OUT_W / W
+
+
+def ly(v):
+    return v * OUT_H / H
+
+
+def ls(v):
+    return v * min(OUT_W / W, OUT_H / H)
+
+
+def _scale_xy(xy):
+    if xy and isinstance(xy[0], (list, tuple)):
+        return [(lx(a), ly(b)) for a, b in xy]
+    return [lx(v) if i % 2 == 0 else ly(v) for i, v in enumerate(xy)]
+
+
+class _ScaledDraw:
+    """ImageDraw on a scaled screen: positions in base pixels."""
+
+    def __init__(self, d):
+        self.d = d
+
+    def text(self, xy, text, **kw):
+        self.d.text(_scale_xy(xy), text, **kw)
+
+    def textlength(self, text, font=None):
+        return self.d.textlength(text, font=font) * W / OUT_W  # in base pixels
+
+    def line(self, xy, fill=None, width=1, **kw):
+        self.d.line(_scale_xy(xy), fill=fill, width=max(1, round(ls(width))), **kw)
+
+    def rectangle(self, xy, **kw):
+        self.d.rectangle(_scale_xy(xy), **kw)
+
+    def rounded_rectangle(self, xy, radius=0, **kw):
+        self.d.rounded_rectangle(_scale_xy(xy), radius=ls(radius), **kw)
+
+    def ellipse(self, xy, **kw):
+        x0, y0, x1, y1 = xy
+        cx, cy, r = (x0 + x1) / 2, (y0 + y1) / 2, ls((x1 - x0) / 2)
+        self.d.ellipse((lx(cx) - r, ly(cy) - r, lx(cx) + r, ly(cy) + r), **kw)
+
+    def polygon(self, xy, **kw):
+        self.d.polygon(_scale_xy(xy), **kw)
+
+    def __getattr__(self, name):
+        return getattr(self.d, name)
+
+
+def _draw(img, *a, **kw):
+    d = _pil_draw(img, *a, **kw)
+    return _ScaledDraw(d) if img.size == (OUT_W, OUT_H) and (OUT_W, OUT_H) != (W, H) else d
+
+
+def set_board(name):
+    global OUT_W, OUT_H
+    OUT_W, OUT_H = BOARDS[name]
+    ImageDraw.Draw = _draw
+    for key, f in list(F.items()):  # fonts of the size class (round(size x S))
+        F[key] = ImageFont.truetype(f.path, round(f.size * ls(1)))
+
+
 def new_screen():
-    img = Image.new("RGB", (W, H), C["Background"])
+    img = Image.new("RGB", (OUT_W, OUT_H), C["Background"])
     return img, ImageDraw.Draw(img)
 
 
 def rrect(img, box, r, fill):
+    if img.size == (OUT_W, OUT_H) and (OUT_W, OUT_H) != (W, H):
+        x0, y0, x1, y1 = box
+        box, r = (lx(x0), ly(y0), lx(x1 + 1) - 1, ly(y1 + 1) - 1), ls(r)
     x0, y0, x1, y1 = [int(v) for v in box]
     w, h = x1 - x0 + 1, y1 - y0 + 1
     m = Image.new("L", (w * SUP, h * SUP), 0)
@@ -113,7 +197,7 @@ def back_header(img, title):
 
 
 def paste(img, im, x, y):
-    img.paste(im, (int(x), int(y)), im)
+    img.paste(im, (int(lx(x)), int(ly(y))), im)
 
 
 def temp_color(t):
@@ -166,7 +250,7 @@ def drop(img, cx, cy, color):
     ld.polygon([((cx - 3) * s, cy * s), ((cx + 3) * s, cy * s), (cx * s, (cy - 6) * s)],
                fill=color + (255,))
     ld.ellipse(((cx - 4) * s, (cy - 3) * s, (cx + 4) * s, (cy + 5) * s), fill=color + (255,))
-    small = layer.resize((W, H), Image.LANCZOS)
+    small = layer.resize((OUT_W, OUT_H), Image.LANCZOS)
     img.paste(small, (0, 0), small)
 
 
@@ -244,7 +328,7 @@ def graph():
     ld.line([(x * SUP, y * SUP) for x, y in zip(xs, ys)], fill=C["Graph"] + (255,), width=2 * SUP)
     for x, y in zip(xs, ys):
         ld.ellipse(((x - 3) * SUP, (y - 3) * SUP, (x + 3) * SUP, (y + 3) * SUP), fill=C["Graph"] + (255,))
-    img.paste(layer.resize((W, H), Image.LANCZOS), (0, 0), layer.resize((W, H), Image.LANCZOS))
+    img.paste(layer.resize((OUT_W, OUT_H), Image.LANCZOS), (0, 0), layer.resize((OUT_W, OUT_H), Image.LANCZOS))
     d = ImageDraw.Draw(img)
     for (hour, t, ic, rain), x, y in zip(HOURLY, xs, ys):
         paste(img, icon(ic, True), x - 15, y - 36)
@@ -302,6 +386,47 @@ def update_screen(downloading=False):
     return img
 
 
+def update_screen_info(rolled_back=False):
+    """screen_update.cpp with the "Thông tin" header button (and a rollback notice)"""
+    img, d = new_screen()
+    back_header(img, "Firmware")
+    pill(img, 212, 4, 100, 28, "Thông tin", C["Accent"], C["Accent"], True)
+    d.text((160, 70), "Phiên bản v1.2.0", font=F["medium"], fill=C["Ink"], anchor="mm")
+    if rolled_back:
+        d.text((160, 102), "Bản v1.2.1 bị lỗi, đã quay lại", font=F["small"], fill=C["Warn"],
+               anchor="mm")
+        d.text((160, 152), "Máy tự quay lại bản trước để vẫn chạy được", font=F["tiny"],
+               fill=C["Muted"], anchor="mm")
+        pill(img, 70, 182, 180, 40, "Kiểm tra", C["Accent"], C["OnAccent"], False)
+    else:
+        d.text((160, 102), "Đã là bản mới nhất", font=F["small"], fill=C["Ok"], anchor="mm")
+        pill(img, 70, 182, 180, 40, "Kiểm tra", C["Accent"], C["OnAccent"], False)
+    return img
+
+
+def info_screen(verifying=False):
+    """screen_info.cpp: device information (opened from the Firmware screen)"""
+    img, d = new_screen()
+    back_header(img, "Thông tin máy")
+    version = ("v1.2.0  đang kiểm tra (8 phút)", C["Highlight"]) if verifying else (
+        "v1.2.0  đã xác nhận", C["Ok"])
+    rows = [("Phiên bản", *version), ("Đang chạy", "2 ngày 05:14", C["Ink"]),
+            ("Khởi động", "37 lần, lỗi 1 lần", C["Ink"]),
+            ("Lần cuối do", "Rút điện / bật lại", C["Ink"]),
+            ("WiFi", "MIX   -58 dBm", C["Ok"]), ("IP", "172.19.97.143", C["Ink"]),
+            ("MAC", "24:6F:28:AB:CD:EF", C["Ink"]), ("RAM trống", "142 KB (thấp nhất 96 KB)", C["Ink"]),
+            ("Thời tiết", "cập nhật 3 phút trước", C["Ink"])]
+    card(img, 6, 38, 308, 196)
+    d = ImageDraw.Draw(img)
+    for i, (lab, val, col) in enumerate(rows):
+        mid = 50 + i * 21
+        d.text((16, mid), lab, font=F["label"], fill=C["Label"], anchor="lm")
+        d.text((304, mid), val, font=F["label"], fill=col, anchor="rm")
+        if i < len(rows) - 1:
+            d.line((16, mid + 10, 304, mid + 10), fill=C["Track"])
+    return img
+
+
 def wrap(d, text, fnt, max_w):
     lines, cur = [], ""
     for word in text.split():
@@ -334,11 +459,11 @@ def photos_hint():
     """screen_photos.cpp: tap zones shown when the viewer opens"""
     img, d = new_screen()
     d.text((160, 20), "Ảnh", font=F["medium"], fill=C["Ink"], anchor="mm")
-    zone = 320 // 3
+    zone = W // 3
     for i in (1, 2):
         d.line((i * zone, 44, i * zone, 195), fill=C["Line"])
     mid = (44 + 196) // 2
-    for cx, label, right in ((zone // 2, "Trước", False), (320 - zone // 2, "Sau", True)):
+    for cx, label, right in ((zone // 2, "Trước", False), (W - zone // 2, "Sau", True)):
         d.text((cx, mid), label, font=F["small"], fill=C["Accent"], anchor="mm")
         half = d.textlength(label, font=F["small"]) / 2
         chevron(d, cx + (half + 10 if right else -half - 10), mid, right, C["Accent"])
@@ -529,6 +654,8 @@ SCREENS = {
     "wifi": lambda: [wifi_list(), keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối"),
                      keyboard("VNPT-5G-A1B2", "matkhau12", True, "Kết nối", "symbols"),
                      connect_failed()],
+    "info": lambda: [update_screen_info(), update_screen_info(rolled_back=True), info_screen(),
+                     info_screen(verifying=True)],
 }
 
 
@@ -538,7 +665,10 @@ def main():
     parser.add_argument("--out", required=True, help="PNG sheet to write")
     parser.add_argument("--scale", type=int, default=2, help="pixel scale (nearest neighbour)")
     parser.add_argument("--screen", choices=sorted(SCREENS), default="main")
+    parser.add_argument("--board", choices=sorted(BOARDS), default="cyd28")
     args = parser.parse_args()
+    set_board(args.board)
+    W, H = OUT_W, OUT_H  # noqa: N806 - size of the rendered screens
 
     images = SCREENS[args.screen]()
     cols, sc, pad = 3, args.scale, 12

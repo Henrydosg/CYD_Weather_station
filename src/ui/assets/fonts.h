@@ -5,9 +5,9 @@
 #include <pgmspace.h>
 #include <stdint.h>
 
-extern const uint8_t kFontSmall[];  // Roboto-Regular.ttf 15px, 30677 bytes
-extern const uint8_t kFontMedium[];  // Roboto-Medium.ttf 20px, 50377 bytes
-extern const uint8_t kFontLabel[];  // Roboto-Regular.ttf 13px, 24228 bytes
-extern const uint8_t kFontTiny[];  // Roboto-Regular.ttf 12px, 22945 bytes
-extern const uint8_t kFontTinyBold[];  // Roboto-Medium.ttf 12px, 23340 bytes
-extern const uint8_t kFontBig[];  // Roboto-Medium.ttf 40px, 8874 bytes
+extern const uint8_t kFontSmall[];  // Roboto-Regular.ttf, S 15px 30677 B / M 20px 49762 B
+extern const uint8_t kFontMedium[];  // Roboto-Medium.ttf, S 20px 50377 B / M 27px 85328 B
+extern const uint8_t kFontLabel[];  // Roboto-Regular.ttf, S 13px 24228 B / M 17px 37369 B
+extern const uint8_t kFontTiny[];  // Roboto-Regular.ttf, S 12px 22945 B / M 16px 34806 B
+extern const uint8_t kFontTinyBold[];  // Roboto-Medium.ttf, S 12px 23340 B / M 16px 35006 B
+extern const uint8_t kFontBig[];  // Roboto-Medium.ttf, S 40px 8874 B / M 53px 15378 B

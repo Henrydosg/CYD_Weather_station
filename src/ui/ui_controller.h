@@ -10,6 +10,7 @@
 #include "screen_connect.h"
 #include "screen_dashboard.h"
 #include "screen_graph.h"
+#include "screen_info.h"
 #include "screen_keyboard.h"
 #include "screen_message.h"
 #include "screen_photos.h"
@@ -26,13 +27,17 @@ class UiController {
 
   // Sets up the display. Starts with calibration if it was never done.
   void begin(const Settings& settings);
-  // Call every loop iteration.
+  // Call every loop iteration while the weather station has the display.
   UiCommand update(const UiState& state, const TouchEvent& touch, uint32_t now);
+  // Takes the display over from the hourglass clock: the dashboard (or, with
+  // toSettings, the Settings screen) is drawn on the next update(). Left alone
+  // for config::kClockReturnMs, the dashboard asks to go back (UiAction::ShowClock).
+  void enter(uint32_t now, bool toSettings = false);
 
  private:
   enum class Screen : uint8_t {
     Dashboard, Graph, Settings, Calibration, Wifi, Keyboard, Connect, Cities, Search, Photos,
-    Update, Message
+    Update, Info, Message
   };
 
   void showDashboard();
@@ -64,10 +69,12 @@ class UiController {
   ScreenSearch search_;
   ScreenPhotos photos_;
   ScreenUpdate update_;
+  ScreenInfo info_;
   ScreenMessage message_;
   Screen screen_ = Screen::Dashboard;
   Screen afterCalibration_ = Screen::Dashboard;
   uint32_t lastTapAt_ = 0;
   uint32_t messageShown_ = 0;  // id of the remote message opened last
   bool dashboardPending_ = true;  // full redraw on the next update (needs UiState)
+  bool settingsPending_ = false;  // enter(now, true): Settings on the next update
 };

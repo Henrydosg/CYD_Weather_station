@@ -129,6 +129,7 @@ bool OtaUpdater::check() {
 bool OtaUpdater::beginDownload() {
   Serial.printf("[ota] downloading %s (%lu bytes)\n", url_, static_cast<unsigned long>(size_));
   client_.setCACert(kOpenMeteoRootCa);
+  client_.setHandshakeTimeout(config::kTlsHandshakeSec);
   http_.setTimeout(config::kHttpTimeoutMs);
   http_.setConnectTimeout(config::kHttpTimeoutMs);
   http_.useHTTP10(true);  // plain body, no chunked encoding
